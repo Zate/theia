@@ -240,14 +240,23 @@ export class TreeWidget extends VirtualWidget implements StatefulWidget {
     }
 
     protected renderCaptionSuffixes(node: ITreeNode, props: NodeProps): h.Child[] {
-        return this.getDecorationData(node, 'captionSuffixes').filter(notEmpty).reduce((acc, current) => acc.concat(current), []).map(suffix => {
-            const style = this.applyFontStyles({}, suffix.fontData);
+        const suffixes = this.getDecorationData(node, 'captionSuffixes').filter(notEmpty).reduce((acc, current) => acc.concat(current), []);
+        const style = (fontData: TreeDecoration.FontData | undefined) => this.applyFontStyles({}, fontData);
+        const leftSuffixes = suffixes.filter(suffix => !suffix.rightIndent).map(suffix => {
             const attrs = {
-                className: TreeDecoration.Styles.CAPTION_SUFFIX_CLASS,
-                style
+                className: TreeDecoration.Styles.CAPTION_SUFFIX_LEFT_CLASS,
+                style: style(suffix.fontData)
             };
             return h.div(attrs, suffix.data);
         });
+        const rightSuffixes = suffixes.filter(suffix => !!suffix.rightIndent).reverse().map(suffix => {
+            const attrs = {
+                className: [TreeDecoration.Styles.TEXT_ALIGN_CENTER_CLASS, TreeDecoration.Styles.CAPTION_SUFFIX_RIGHT_CLASS].join(' '),
+                style: style(suffix.fontData)
+            };
+            return h.div(attrs, suffix.data);
+        });
+        return [...leftSuffixes, h.div({ className: [TreeDecoration.Styles.CAPTION_SUFFIX_WRAPPER_CLASS, TreeDecoration.Styles.CAPTION_SUFFIX_OVERFLOW_CLASS].join(' ') }, ...rightSuffixes)];
     }
 
     protected renderCaptionPrefix(node: ITreeNode, props: NodeProps): h.Child {
@@ -510,26 +519,8 @@ export class TreeWidget extends VirtualWidget implements StatefulWidget {
         return node;
     }
 
-    protected deflateDecorators(decorators: Map<string, TreeDecoration.Data[]>) {
-        // tslint:disable-next-line:no-null-keyword
-        const state = Object.create(null);
-        for (const [id, data] of decorators) {
-            state[id] = data;
-        }
-        return state;
-    }
-
-    // tslint:disable-next-line:no-any
-    protected inflateDecorators(state: any): Map<string, TreeDecoration.Data[]> {
-        const decorators = new Map<string, TreeDecoration.Data[]>();
-        for (const id of Object.keys(state)) {
-            decorators.set(id, state[id]);
-        }
-        return decorators;
-    }
-
     storeState(): object {
-        const decorations = this.deflateDecorators(this.decorations);
+        const decorations = this.decoratorService.deflateDecorators(this.decorations);
         let state: object = {
             decorations
         };
@@ -549,7 +540,7 @@ export class TreeWidget extends VirtualWidget implements StatefulWidget {
             this.model.root = this.inflateFromStorage(root);
         }
         if (decorations) {
-            this.updateDecorations(this.inflateDecorators(decorations));
+            this.updateDecorations(this.decoratorService.inflateDecorators(decorations));
         }
     }
 

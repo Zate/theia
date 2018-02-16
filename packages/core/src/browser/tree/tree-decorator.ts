@@ -10,7 +10,7 @@ import { ITree } from './tree';
 import { Event, Emitter } from '../../common/event';
 
 /**
- * Tree decorator that can change the outlook and the style of the tree items within a widget.
+ * Tree decorator that can change the look and the style of the tree items within a widget.
  */
 export interface TreeDecorator {
 
@@ -43,6 +43,17 @@ export interface TreeDecoratorService {
      */
     getDecorations(tree: ITree): Map<string, TreeDecoration.Data[]>;
 
+    /**
+     * Transforms the decorators argument into an object, so that it can be safely serialized into JSON.
+     */
+    deflateDecorators(decorations: Map<string, TreeDecoration.Data[]>): object;
+
+    /**
+     * Counterpart of the [deflateDecorators](#deflateDecorators) method. Restores the argument into a Map
+     * of tree node IDs and the corresponding decorations data array.
+     */
+    inflateDecorators(state: any): Map<string, TreeDecoration.Data[]>;
+
 }
 
 /**
@@ -57,6 +68,15 @@ export class NoopTreeDecoratorService implements TreeDecoratorService {
     readonly onDidChangeDecorations = this.emitter.event;
 
     getDecorations() {
+        return new Map();
+    }
+
+    deflateDecorators(decorations: Map<string, TreeDecoration.Data[]>): object {
+        return {};
+    }
+
+    // tslint:disable-next-line:no-any
+    inflateDecorators(state: any): Map<string, TreeDecoration.Data[]> {
         return new Map();
     }
 
@@ -101,6 +121,24 @@ export abstract class AbstractTreeDecoratorService implements TreeDecoratorServi
         return changes;
     }
 
+    deflateDecorators(decorations: Map<string, TreeDecoration.Data[]>): object {
+        // tslint:disable-next-line:no-null-keyword
+        const state = Object.create(null);
+        for (const [id, data] of decorations) {
+            state[id] = data;
+        }
+        return state;
+    }
+
+    // tslint:disable-next-line:no-any
+    inflateDecorators(state: any): Map<string, TreeDecoration.Data[]> {
+        const decorators = new Map<string, TreeDecoration.Data[]>();
+        for (const id of Object.keys(state)) {
+            decorators.set(id, state[id]);
+        }
+        return decorators;
+    }
+
 }
 
 /**
@@ -113,7 +151,11 @@ export namespace TreeDecoration {
      */
     export namespace Styles {
         export const CAPTION_PREFIX_CLASS = 'theia-caption-prefix';
-        export const CAPTION_SUFFIX_CLASS = 'theia-caption-suffix';
+        export const CAPTION_SUFFIX_LEFT_CLASS = 'theia-caption-suffix-left';
+        export const CAPTION_SUFFIX_RIGHT_CLASS = 'theia-caption-suffix-right';
+        export const CAPTION_SUFFIX_WRAPPER_CLASS = 'theia-caption-suffix-wrapper';
+        export const CAPTION_SUFFIX_OVERFLOW_CLASS = 'theia-caption-suffix-overflow';
+        export const TEXT_ALIGN_CENTER_CLASS = 'theia-text-align-center';
         export const ICON_WRAPPER_CLASS = 'theia-icon-wrapper';
         export const DECORATOR_SIZE_CLASS = 'theia-decorator-size';
         export const TOP_RIGHT_CLASS = 'theia-top-right';
@@ -142,7 +184,7 @@ export namespace TreeDecoration {
     export type Color = string;
 
     /**
-     * Encapsulates styling and outlook information of the font.
+     * Encapsulates styling information of the font.
      */
     export interface FontData {
 
@@ -172,6 +214,20 @@ export namespace TreeDecoration {
          * Font data for customizing the prefix of the suffix.
          */
         readonly fontData?: FontData;
+
+    }
+
+    /**
+     * A caption suffix that can be indented left (that is the default) or right.
+     */
+    export interface CaptionSuffix extends CaptionAffix {
+
+        /**
+         * If `true` the caption suffix will not be followed right after the caption but will be indented to the right hand side.
+         * Also, the interpretation of the `priority` property on the decoration data changes: the highest priority goes
+         * to the right hand side. `undefined` is treated as `false`.
+         */
+        readonly rightIndent?: boolean;
 
     }
 
@@ -263,7 +319,7 @@ export namespace TreeDecoration {
     }
 
     /**
-     * Encapsulates outlook and styling information that has to be applied on the tree node which we decorate.
+     * Encapsulates styling information that has to be applied on the tree node which we decorate.
      */
     export interface Data {
 
@@ -292,7 +348,7 @@ export namespace TreeDecoration {
         /**
          * Suffixes that might come after the caption as an additional information.
          */
-        readonly captionSuffixes?: CaptionAffix[];
+        readonly captionSuffixes?: CaptionSuffix[];
 
         /**
          * Custom tooltip for the decorated item. Tooltip will be appended to the original tooltip, if any.
