@@ -29,40 +29,40 @@ WORKDIR /home/theia
 COPY --from=builder /home/theia /home/theia
 COPY --from=builder /usr/local/go /usr/local/go
 RUN apk add --no-cache git openssh-client ca-certificates libstdc++ bash \
-    && mkdir -p /home/project \
+    && mkdir -p /home/project/go \
     && export PATH="/usr/local/go/bin:$PATH" \
-    && export GOPATH="/home/project" \
+    && export GOPATH="/home/project/go" \
     && export PATH=$GOPATH/bin:$PATH \
     && go version \
     && mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" \
-    && go get -u -v github.com/ramya-rao-a/go-outline \ 
-    && go get -u -v github.com/acroca/go-symbols \
-    && go get -u -v github.com/nsf/gocode \
-    && go get -u -v github.com/rogpeppe/godef \
-    && go get -u -v golang.org/x/tools/cmd/godoc \
-    && go get -u -v github.com/zmb3/gogetdoc \
-    && go get -u -v github.com/golang/lint/golint \
-    && go get -u -v github.com/fatih/gomodifytags \
-    && go get -u -v github.com/uudashr/gopkgs/cmd/gopkgs \
-    && go get -u -v golang.org/x/tools/cmd/gorename \
-    && go get -u -v sourcegraph.com/sqs/goreturns \
-    && go get -u -v github.com/cweill/gotests/... \
-    && go get -u -v golang.org/x/tools/cmd/guru \
-    && go get -u -v github.com/josharian/impl \
-    && go get -u -v github.com/haya14busa/goplay/cmd/goplay \
-    && go get -u -v github.com/golang/dep/cmd/dep \
+    && go get -u github.com/ramya-rao-a/go-outline \ 
+    && go get -u github.com/acroca/go-symbols \
+    && go get -u github.com/nsf/gocode \
+    && go get -u github.com/rogpeppe/godef \
+    && go get -u golang.org/x/tools/cmd/godoc \
+    && go get -u github.com/zmb3/gogetdoc \
+    && go get -u github.com/golang/lint/golint \
+    && go get -u github.com/fatih/gomodifytags \
+    && go get -u github.com/uudashr/gopkgs/cmd/gopkgs \
+    && go get -u golang.org/x/tools/cmd/gorename \
+    && go get -u sourcegraph.com/sqs/goreturns \
+    && go get -u github.com/cweill/gotests/... \
+    && go get -u golang.org/x/tools/cmd/guru \
+    && go get -u github.com/josharian/impl \
+    && go get -u github.com/haya14busa/goplay/cmd/goplay \
+    && go get -u github.com/golang/dep/cmd/dep \
     && echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf \
 # Optional for my personal use
-    && printf "[user]\n    name = Zate\n    email = zate75@gmail.com\n" > /root/.gitignore \
-    && mkdir -p /root/.go \
-    && echo '{"toolsGopath":"/root/go"}' > /root/.go/go.json
+    && printf "[user]\n    name = Zate\n    email = zate75@gmail.com\n" > /root/.gitconfig 
+#    && mkdir -p /root/.go \
+#    && echo '{"toolsGopath":"/root/go"}' > /root/.go/go.json
 
 
 EXPOSE 3000
 ENV SHELL /bin/bash
 ENV USE_LOCAL_GIT true
 ENV PATH "/usr/local/go/bin:$PATH"
-ENV GOPATH "/home/project"
+ENV GOPATH "/home/project/go"
 ENV PATH "$GOPATH/bin:$PATH"
 ENV TDIR "/home/theia"
 ADD docker-entrypoint.sh /
