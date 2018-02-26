@@ -6,4 +6,4 @@ if [ "$1" != 'stuff' ]; then
 fi
 
 cd $TDIR
-exec yarn theia start /home/project --hostname=0.0.0.0
+exec yarn theia start /home/project/go/src --hostname=0.0.0.0
