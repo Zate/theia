@@ -9,6 +9,7 @@ import { injectable, interfaces } from "inversify";
 import { listen as doListen, Logger, ConsoleLogger } from "vscode-ws-jsonrpc";
 import { ConnectionHandler, JsonRpcProxyFactory, JsonRpcProxy } from "../../common";
 import { Endpoint } from "../endpoint";
+import { setWsHeartbeat } from "ws-heartbeat/client";
 const ReconnectingWebSocket = require('reconnecting-websocket');
 
 export interface WebSocketOptions {
@@ -47,7 +48,10 @@ export class WebSocketConnectionProvider {
     listen(handler: ConnectionHandler, options?: WebSocketOptions): void {
         const url = this.createWebSocketUrl(handler.path);
         const webSocket = this.createWebSocket(url, options);
-
+        setWsHeartbeat(webSocket, '{"kind":"ping"}', {
+            pingTimeout: 60000, // in 60 seconds, if no message accepted from server, close the connection.
+            pingInterval: 25000, // every 25 seconds, send a ping message to the server.
+        });
         const logger = this.createLogger();
         webSocket.onerror = function (error: Event) {
             logger.error('' + error);
