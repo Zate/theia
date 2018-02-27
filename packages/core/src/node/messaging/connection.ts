@@ -49,7 +49,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         perMessageDeflate: false
     });
 
-    wss.on('connection', (ws: WebSocket) => {
+    wss.on('connection', (ws: webSocket) => {
 
     const extWs = ws as ExtWebSocket;
 
@@ -61,11 +61,11 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
     });
 
     setInterval(() => {
-        wss.clients.forEach((ws: WebSocket) => {
+        wss.clients.forEach((ws: webSocket) => {
 
             const extWs = ws as ExtWebSocket;
 
-            if (!extWs.isAlive) return ws.terminate();
+            if (!extWs.isAlive) { return ws.terminate();}
 
             extWs.isAlive = false;
             ws.ping(null, undefined);
