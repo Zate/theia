@@ -39,7 +39,7 @@ export interface OnOpen {
     (webSocket: ws, request: http.IncomingMessage, socket: net.Socket, head: Buffer): void;
 }
 
-interface ExtWebSocket extends WebSocket {
+interface ExtWebSocket extends ws {
     isAlive: boolean;
 }
 
@@ -49,7 +49,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         perMessageDeflate: false
     });
 
-    wss.on('connection', (ws: webSocket) => {
+    wss.on('connection', (ws: ws) => {
 
     const extWs = ws as ExtWebSocket;
 
@@ -61,7 +61,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
     });
 
     setInterval(() => {
-        wss.clients.forEach((ws: webSocket) => {
+        wss.clients.forEach((ws: ws) => {
 
             const extWs = ws as ExtWebSocket;
 
