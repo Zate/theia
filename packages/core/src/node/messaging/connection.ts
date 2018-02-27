@@ -6,6 +6,7 @@
  */
 
 import * as ws from "ws";
+import { setWsHeartbeat } from "ws-heartbeat/server";
 import * as http from "http";
 import * as https from "https";
 import * as url from "url";
