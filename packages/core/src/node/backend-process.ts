@@ -7,5 +7,5 @@
 
 export namespace BackendProcess {
     /* Running in electron or a childProcess.fork of electron */
-    export
+    export {};
 }
