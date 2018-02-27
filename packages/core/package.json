@@ -26,6 +26,7 @@
     "vscode-uri": "^1.0.1",
     "vscode-ws-jsonrpc": "0.0.1-alpha.5",
     "ws": "^3.0.0",
+    "ws-heartbeat": "^1.0.4",
     "yargs": "^9.0.1"
   },
   "publishConfig": {
