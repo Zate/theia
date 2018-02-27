@@ -35,14 +35,12 @@ export function openJsonRpcSocket(options: IServerOptions, onOpen: (socket: IWeb
     });
 }
 
-function noop() { }
-
-function heartbeat(this: any, err: any) {
-    this.isAlive = true;
-}
-
 export interface OnOpen {
     (webSocket: ws, request: http.IncomingMessage, socket: net.Socket, head: Buffer): void;
+}
+
+interface ExtWebSocket extends WebSocket {
+    isAlive: boolean;
 }
 
 export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
@@ -51,19 +49,28 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         perMessageDeflate: false
     });
 
-    wss.on('connection', function connection(ws: any) {
-        ws.isAlive = true;
-        ws.on('pong', heartbeat);
+    wss.on('connection', (ws: WebSocket) => {
+
+    const extWs = ws as ExtWebSocket;
+
+    extWs.isAlive = true;
+
+        ws.on('pong', () => {
+            extWs.isAlive = true;
+        });
     });
 
-    setInterval(function ping() {
-        wss.clients.forEach(function each(ws: any) {
-            if (ws.isAlive === false) { return ws.terminate(); }
+    setInterval(() => {
+        wss.clients.forEach((ws: WebSocket) => {
 
-            ws.isAlive = false;
-            ws.ping(noop);
+            const extWs = ws as ExtWebSocket;
+
+            if (!extWs.isAlive) return ws.terminate();
+
+            extWs.isAlive = false;
+            ws.ping(null, undefined);
         });
-    }, 30000);
+    }, 10000);
 
     options.server.on('upgrade', (request: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
         const pathname = request.url ? url.parse(request.url).pathname : undefined;
