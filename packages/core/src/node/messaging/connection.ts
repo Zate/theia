@@ -47,7 +47,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
     });
     setWsHeartbeat(wss, (ws, data, flag) => {
         if (data === '{"kind":"ping"}') {
-            ws.send('{"kind":"pong"}');
+            webSocket.send('{"kind":"pong"}');
         }
     }, 60000); // in 60 seconds, if no message accepted from client, close the connection.
     options.server.on('upgrade', (request: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
