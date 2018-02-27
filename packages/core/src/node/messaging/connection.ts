@@ -6,7 +6,6 @@
  */
 
 import * as ws from "ws";
-import { setWsHeartbeat } from "ws-heartbeat/server";
 import * as http from "http";
 import * as https from "https";
 import * as url from "url";
@@ -32,13 +31,14 @@ export function createServerWebSocketConnection(options: IServerOptions, onConne
 export function openJsonRpcSocket(options: IServerOptions, onOpen: (socket: IWebSocket) => void): void {
     openSocket(options, socket => {
         const webSocket = toIWebSocket(socket);
-        setWsHeartbeat(webSocket, (ws, data, flag) => {
-            if (data === '{"kind":"ping"}') {
-                webSocket.send('{"kind":"pong"}');
-            }
-        });
         onOpen(webSocket);
     });
+}
+
+function noop() { }
+
+function heartbeat() {
+    this.isAlive = true;
 }
 
 export interface OnOpen {
@@ -50,6 +50,21 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         noServer: true,
         perMessageDeflate: false
     });
+
+    wss.on('connection', function connection(ws) {
+        ws.isAlive = true;
+        ws.on('pong', heartbeat);
+    });
+
+    const interval = setInterval(function ping() {
+        wss.clients.forEach(function each(ws) {
+            if (ws.isAlive === false) return ws.terminate();
+
+            ws.isAlive = false;
+            ws.ping(noop);
+        });
+    }, 30000);
+
     options.server.on('upgrade', (request: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
         const pathname = request.url ? url.parse(request.url).pathname : undefined;
         if (options.path && pathname === options.path || options.matches && options.matches(request)) {
