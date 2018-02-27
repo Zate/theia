@@ -37,7 +37,7 @@ export function openJsonRpcSocket(options: IServerOptions, onOpen: (socket: IWeb
 
 function noop() { }
 
-function heartbeat() {
+function heartbeat(this: any, err: any) {
     this.isAlive = true;
 }
 
@@ -51,14 +51,14 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         perMessageDeflate: false
     });
 
-    wss.on('connection', function connection(ws) {
+    wss.on('connection', function connection(ws: any) {
         ws.isAlive = true;
         ws.on('pong', heartbeat);
     });
 
-    const interval = setInterval(function ping() {
-        wss.clients.forEach(function each(ws) {
-            if (ws.isAlive === false) return ws.terminate();
+    setInterval(function ping() {
+        wss.clients.forEach(function each(ws: any) {
+            if (ws.isAlive === false) { return ws.terminate() };
 
             ws.isAlive = false;
             ws.ping(noop);
