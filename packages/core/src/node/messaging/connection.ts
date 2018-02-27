@@ -32,7 +32,7 @@ export function createServerWebSocketConnection(options: IServerOptions, onConne
 export function openJsonRpcSocket(options: IServerOptions, onOpen: (socket: IWebSocket) => void): void {
     openSocket(options, socket => {
         const webSocket = toIWebSocket(socket);
-        setWsHeartbeat(wss, (webSocket, data, flag) => {
+        setWsHeartbeat(webSocket, (ws, data, flag) => {
             if (data === '{"kind":"ping"}') {
                 webSocket.send('{"kind":"pong"}');
             }
