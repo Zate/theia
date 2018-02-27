@@ -6,6 +6,7 @@
  */
 
 import * as ws from "ws";
+import { setWsHeartbeat } from "ws-heartbeat/server";
 import * as http from "http";
 import * as https from "https";
 import * as url from "url";
@@ -44,6 +45,11 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         noServer: true,
         perMessageDeflate: false
     });
+    setWsHeartbeat(wss, (ws, data, flag) => {
+        if (data === '{"kind":"ping"}') {
+            ws.send('{"kind":"pong"}');
+        }
+    }, 60000); // in 60 seconds, if no message accepted from client, close the connection.
     options.server.on('upgrade', (request: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
         const pathname = request.url ? url.parse(request.url).pathname : undefined;
         if (options.path && pathname === options.path || options.matches && options.matches(request)) {
