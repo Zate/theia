@@ -32,6 +32,11 @@ export function createServerWebSocketConnection(options: IServerOptions, onConne
 export function openJsonRpcSocket(options: IServerOptions, onOpen: (socket: IWebSocket) => void): void {
     openSocket(options, socket => {
         const webSocket = toIWebSocket(socket);
+        setWsHeartbeat(wss, (webSocket, data, flag) => {
+            if (data === '{"kind":"ping"}') {
+                webSocket.send('{"kind":"pong"}');
+            }
+        });
         onOpen(webSocket);
     });
 }
@@ -45,11 +50,6 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         noServer: true,
         perMessageDeflate: false
     });
-    setWsHeartbeat(wss, (webSocket, data, flag) => {
-        if (data === '{"kind":"ping"}') {
-            webSocket.send('{"kind":"pong"}');
-        }
-    }, 60000); // in 60 seconds, if no message accepted from client, close the connection.
     options.server.on('upgrade', (request: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
         const pathname = request.url ? url.parse(request.url).pathname : undefined;
         if (options.path && pathname === options.path || options.matches && options.matches(request)) {
