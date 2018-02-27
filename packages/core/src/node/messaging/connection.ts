@@ -45,7 +45,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         noServer: true,
         perMessageDeflate: false
     });
-    setWsHeartbeat(wss, (ws, data, flag) => {
+    setWsHeartbeat(wss, (webSocket, data, flag) => {
         if (data === '{"kind":"ping"}') {
             webSocket.send('{"kind":"pong"}');
         }
