@@ -58,7 +58,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
 
     setInterval(function ping() {
         wss.clients.forEach(function each(ws: any) {
-            if (ws.isAlive === false) { return ws.terminate() };
+            if (ws.isAlive === false) { return ws.terminate(); }
 
             ws.isAlive = false;
             ws.ping(noop);
