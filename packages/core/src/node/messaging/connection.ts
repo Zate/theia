@@ -68,7 +68,6 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
             if (!extWs.isAlive) { return ws.terminate(); }
 
             extWs.isAlive = false;
-            
         });
     }, 10000);
 
