@@ -13,7 +13,6 @@ import { inject, named, injectable } from "inversify";
 import { ILogger, ContributionProvider } from '../common';
 import { CliContribution } from './cli';
 import { Deferred } from '../common/promise-util';
-import { BackendProcess } from './backend-process';
 import * as fs from "fs-extra";
 
 export const BackendApplicationContribution = Symbol("BackendApplicationContribution");
@@ -29,7 +28,7 @@ export interface BackendApplicationContribution {
     onStop?(app?: express.Application): void;
 }
 
-const defaultPort = BackendProcess.electron ? 0 : 3000;
+const defaultPort = 3000;
 const defaultHost = 'localhost';
 const defaultSSL = false;
 
