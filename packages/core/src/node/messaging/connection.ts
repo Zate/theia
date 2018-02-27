@@ -64,11 +64,11 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         wss.clients.forEach((ws: ws) => {
 
             const extWs = ws as ExtWebSocket;
-
+            ws.ping(null, undefined);
             if (!extWs.isAlive) { return ws.terminate(); }
 
             extWs.isAlive = false;
-            ws.ping(null, undefined);
+            
         });
     }, 10000);
 
