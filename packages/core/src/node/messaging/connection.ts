@@ -25,6 +25,14 @@ export function createServerWebSocketConnection(options: IServerOptions, onConne
         const logger = new ConsoleLogger();
         const connection = createWebSocketConnection(socket, logger);
         onConnect(connection);
+
+        const extWs = ws as ExtWebSocket;
+
+        extWs.isAlive = true;
+
+        ws.on('pong', () => {
+            extWs.isAlive = true;
+        });
     });
 }
 
@@ -39,7 +47,7 @@ export interface OnOpen {
     (webSocket: ws, request: http.IncomingMessage, socket: net.Socket, head: Buffer): void;
 }
 
-interface ExtWebSocket extends ws {
+export interface ExtWebSocket extends ws {
     isAlive: boolean;
 }
 
@@ -49,23 +57,14 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         perMessageDeflate: false
     });
 
-    wss.on('connection', (ws: ws) => {
 
-    const extWs = ws as ExtWebSocket;
-
-    extWs.isAlive = true;
-
-        ws.on('pong', () => {
-            extWs.isAlive = true;
-        });
-    });
 
     setInterval(() => {
         wss.clients.forEach((ws: ws) => {
 
             const extWs = ws as ExtWebSocket;
             ws.ping(null, undefined);
-            if (!extWs.isAlive) { return ws.terminate(); }
+            if (!extWs.isAlive) { return ws.close(); }
 
             extWs.isAlive = false;
         });
