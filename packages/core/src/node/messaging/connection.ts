@@ -20,10 +20,6 @@ export interface IServerOptions {
     matches?(request: http.IncomingMessage): boolean;
 }
 
-export interface ExtWebSocket extends ws {
-    isAlive: boolean;
-}
-
 export function createServerWebSocketConnection(options: IServerOptions, onConnect: (connection: MessageConnection) => void): void {
     openJsonRpcSocket(options, socket => {
         const logger = new ConsoleLogger();
@@ -49,16 +45,6 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         perMessageDeflate: false
     });
 
-    options.server.on('connection', (ws: ws) => {
-        const extWs = ws as ExtWebSocket;
-
-        extWs.isAlive = true;
-
-        ws.on('pong', () => {
-            extWs.isAlive = true;
-        });
-    });
-
     options.server.on('upgrade', (request: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
         const pathname = request.url ? url.parse(request.url).pathname : undefined;
         if (options.path && pathname === options.path || options.matches && options.matches(request)) {
@@ -68,16 +54,6 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
                 } else {
                     webSocket.on('open', () => onOpen(webSocket, request, socket, head));
                 }
-                setInterval(() => {
-                    wss.clients.forEach((ws: ws) => {
-
-                        const extWs = ws as ExtWebSocket;
-                        ws.ping(null, undefined);
-                        if (!extWs.isAlive) { return ws.close(); }
-
-                        extWs.isAlive = false;
-                    });
-                }, 10000);
             });
         }
     });
