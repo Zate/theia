@@ -59,8 +59,6 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         });
     });
 
-
-
     options.server.on('upgrade', (request: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
         const pathname = request.url ? url.parse(request.url).pathname : undefined;
         if (options.path && pathname === options.path || options.matches && options.matches(request)) {
