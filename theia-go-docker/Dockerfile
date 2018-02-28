@@ -2,8 +2,8 @@ FROM node:8-alpine as builder
 ENV GOLANG_VERSION=1.9.4
 ARG version=next
 WORKDIR /home/theia
-ADD $version.package.json ./package.json
-RUN apk add --no-cache wget bash ca-certificates make gcc g++ python go \
+#ADD $version.package.json ./package.json
+RUN apk add --no-cache wget git bash ca-certificates make gcc g++ python go \
     && export GOROOT_BOOTSTRAP="$(go env GOROOT)" GOOS="$(go env GOOS)" GOARCH="$(go env GOARCH)" \
       GOHOSTOS="$(go env GOHOSTOS)" GOHOSTARCH="$(go env GOHOSTARCH)" \
     && export GO386='387' \
@@ -17,18 +17,37 @@ RUN apk add --no-cache wget bash ca-certificates make gcc g++ python go \
             patch -p2 -i "$p"; \
         done \
     && ./make.bash \
-    && rm -rf /go-alpine-patches \
-    && cd /home/theia \
-    && yarn \
-    && yarn theia build \
-    && rm -rf ./node_modules/electron \
-    && yarn cache clean 
+    && rm -rf /go-alpine-patches 
 
 FROM node:8-alpine
 WORKDIR /home/theia
-COPY --from=builder /home/theia /home/theia
 COPY --from=builder /usr/local/go /usr/local/go
 RUN apk add --no-cache git openssh-client ca-certificates libstdc++ bash \
+    && apk add --no-cache --virtual .build-deps \
+        binutils-gold \
+        curl \
+        g++ \
+        gcc \
+        gnupg \
+        libgcc \
+        linux-headers \
+        make \
+        python \
+        tar \
+        musl-dev \
+        go \
+        wget \
+        xz \
+    && cd /usr/local/bin \ 
+    && ln -s node nodejs \
+    && cd /home/theia \
+    && git clone -b ws-ping --single-branch https://github.com/zate/theia.git \
+    && cd theia \
+    && rm -rf examples/electron* \
+    && yarn \
+#    && yarn theia build \
+    && rm -rf ./node_modules/electron* \
+    && yarn cache clean \
     && mkdir -p /home/project/go \
     && export PATH="/usr/local/go/bin:$PATH" \
     && export GOPATH="/home/project/go" \
@@ -53,6 +72,7 @@ RUN apk add --no-cache git openssh-client ca-certificates libstdc++ bash \
     && go get -u github.com/golang/dep/cmd/dep \
     && echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf \
 # Optional for my personal use
+    && apk del .build-deps \
     && printf "[user]\n    name = Zate\n    email = zate75@gmail.com\n" > /root/.gitconfig 
 #    && mkdir -p /root/.go \
 #    && echo '{"toolsGopath":"/root/go"}' > /root/.go/go.json
