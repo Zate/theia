@@ -20,6 +20,10 @@ export interface IServerOptions {
     matches?(request: http.IncomingMessage): boolean;
 }
 
+export interface ExtWebSocket extends ws {
+    isAlive: boolean;
+}
+
 export function createServerWebSocketConnection(options: IServerOptions, onConnect: (connection: MessageConnection) => void): void {
     openJsonRpcSocket(options, socket => {
         const logger = new ConsoleLogger();
@@ -47,17 +51,11 @@ export interface OnOpen {
     (webSocket: ws, request: http.IncomingMessage, socket: net.Socket, head: Buffer): void;
 }
 
-export interface ExtWebSocket extends ws {
-    isAlive: boolean;
-}
-
 export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
     const wss = new ws.Server({
         noServer: true,
         perMessageDeflate: false
     });
-
-
 
     setInterval(() => {
         wss.clients.forEach((ws: ws) => {
