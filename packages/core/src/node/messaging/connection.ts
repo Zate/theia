@@ -59,16 +59,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         });
     });
 
-    setInterval(() => {
-        wss.clients.forEach((ws: ws) => {
 
-            const extWs = ws as ExtWebSocket;
-            ws.ping(null, undefined);
-            if (!extWs.isAlive) { return ws.close(); }
-
-            extWs.isAlive = false;
-        });
-    }, 10000);
 
     options.server.on('upgrade', (request: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
         const pathname = request.url ? url.parse(request.url).pathname : undefined;
@@ -79,6 +70,16 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
                 } else {
                     webSocket.on('open', () => onOpen(webSocket, request, socket, head));
                 }
+                setInterval(() => {
+                    wss.clients.forEach((ws: ws) => {
+
+                        const extWs = ws as ExtWebSocket;
+                        ws.ping(null, undefined);
+                        if (!extWs.isAlive) { return ws.close(); }
+
+                        extWs.isAlive = false;
+                    });
+                }, 10000);
             });
         }
     });
