@@ -12,7 +12,8 @@ import {
     BoxLayout, BoxPanel, DockLayout, DockPanel, FocusTracker, Layout, Panel, SplitLayout,
     SplitPanel, TabBar, Widget, Title
 } from '@phosphor/widgets';
-import { Drag } from '@phosphor/dragdrop';
+import { Message } from '@phosphor/messaging';
+import { IDragEvent } from '@phosphor/dragdrop';
 import { Saveable } from '../saveable';
 import { StatusBarImpl, StatusBarLayoutData } from '../status-bar/status-bar';
 import { SidePanelHandler, SidePanel, SidePanelHandlerFactory, TheiaDockPanel } from './side-panel-handler';
@@ -92,9 +93,13 @@ export class ApplicationShell extends Widget {
      * to restore its height to this value is made.
      */
     protected lastBottomPanelSize?: number;
+    /**
+     * A promise that is resolved when the currently pending updates of the bottom panel are done.
+     */
+    protected pendingUpdate: Promise<void> = Promise.resolve();
 
     private readonly tracker = new FocusTracker<Widget>();
-    private widgetDragListener?: (event: Event) => void;
+    private readonly dragListener: EventListenerObject;
 
     /**
      * Construct a new application shell.
@@ -135,8 +140,107 @@ export class ApplicationShell extends Widget {
         this.tracker.currentChanged.connect(this.onCurrentChanged, this);
         this.tracker.activeChanged.connect(this.onActiveChanged, this);
 
-        SidePanel.onDragStarted(this.onWidgetDragStarted.bind(this));
-        SidePanel.onDragEnded(this.onWidgetDragEnded.bind(this));
+        this.dragListener = this.createDragEventListener();
+    }
+
+    protected onBeforeAttach(msg: Message): void {
+        document.addEventListener('p-dragenter', this.dragListener, true);
+        document.addEventListener('p-dragover', this.dragListener, true);
+        document.addEventListener('p-dragleave', this.dragListener, true);
+        document.addEventListener('p-drop', this.dragListener, true);
+    }
+
+    protected onAfterDetach(msg: Message): void {
+        document.removeEventListener('p-dragenter', this.dragListener, true);
+        document.removeEventListener('p-dragover', this.dragListener, true);
+        document.removeEventListener('p-dragleave', this.dragListener, true);
+        document.removeEventListener('p-drop', this.dragListener, true);
+    }
+
+    protected createDragEventListener(): EventListenerObject {
+        interface DragEventListener extends EventListenerObject {
+            modifiedPanelState?: { leftExpanded: boolean, rightExpanded: boolean, bottomExpanded: boolean };
+            leaveTimeout?: number;
+        }
+        const shell = this;
+        const listener: DragEventListener = {
+            handleEvent: function (event: Event): void {
+                if (listener.leaveTimeout) {
+                    window.clearTimeout(listener.leaveTimeout);
+                }
+                switch (event.type) {
+                    case 'p-dragenter': {
+                        if (!listener.modifiedPanelState) {
+                            const { mimeData } = event as IDragEvent;
+                            if (mimeData && mimeData.hasData('application/vnd.phosphor.widget-factory')) {
+                                listener.modifiedPanelState = {
+                                    leftExpanded: false,
+                                    rightExpanded: false,
+                                    bottomExpanded: false
+                                };
+                            }
+                        }
+                        break;
+                    }
+                    case 'p-dragover': {
+                        if (listener.modifiedPanelState) {
+                            const { clientX, clientY } = event as IDragEvent;
+                            const threshold = shell.options.sidePanelExpandThreshold;
+                            const statusBarHeight = shell.statusBar.node.clientHeight;
+                            const expLeft = clientX <= threshold;
+                            const expRight = clientX >= window.innerWidth - threshold;
+                            const expBottom = !expLeft && !expRight && clientY >= window.innerHeight - threshold - statusBarHeight;
+                            if (expLeft && !listener.modifiedPanelState.leftExpanded && shell.leftPanelHandler.tabBar.currentTitle === null) {
+                                // The mouse cursor is moved close to the left border
+                                shell.leftPanelHandler.expand();
+                                listener.modifiedPanelState.leftExpanded = true;
+                            }
+                            if (!expLeft && listener.modifiedPanelState.leftExpanded) {
+                                // The mouse cursor is moved away from the left border
+                                shell.leftPanelHandler.collapse();
+                                listener.modifiedPanelState.leftExpanded = false;
+                            }
+                            if (expRight && !listener.modifiedPanelState.rightExpanded && shell.rightPanelHandler.tabBar.currentTitle === null) {
+                                // The mouse cursor is moved close to the right border
+                                shell.rightPanelHandler.expand();
+                                listener.modifiedPanelState.rightExpanded = true;
+                            }
+                            if (!expRight && listener.modifiedPanelState.rightExpanded) {
+                                // The mouse cursor is moved away from the right border
+                                shell.rightPanelHandler.collapse();
+                                listener.modifiedPanelState.rightExpanded = false;
+                            }
+                            if (expBottom && !listener.modifiedPanelState.bottomExpanded && shell.bottomPanel.isHidden) {
+                                // The mouse cursor is close to the bottom border, so expand the bottom panel if necessary
+                                shell.expandBottomPanel();
+                                listener.modifiedPanelState.bottomExpanded = true;
+                            }
+                            if (!expBottom && listener.modifiedPanelState.bottomExpanded) {
+                                // The mouse cursor is moved away from the bottom border
+                                shell.collapseBottomPanel();
+                                listener.modifiedPanelState.bottomExpanded = false;
+                            }
+                        }
+                        break;
+                    }
+                    case 'p-drop':
+                    case 'p-dragleave': {
+                        listener.leaveTimeout = window.setTimeout(() => {
+                            if (listener.modifiedPanelState) {
+                                listener.modifiedPanelState = undefined;
+                                shell.leftPanelHandler.refresh();
+                                shell.rightPanelHandler.refresh();
+                                if (shell.bottomPanel.isEmpty) {
+                                    shell.collapseBottomPanel();
+                                }
+                            }
+                        }, 100);
+                        break;
+                    }
+                }
+            }
+        };
+        return listener;
     }
 
     /**
@@ -165,11 +269,6 @@ export class ApplicationShell extends Widget {
         dockPanel.widgetRemoved.connect((sender, widget) => {
             if (dockPanel.isEmpty) {
                 this.collapseBottomPanel();
-            }
-        }, this);
-        dockPanel.panelAttached.connect(sender => {
-            if (!this.bottomPanel.isHidden && this.lastBottomPanelSize) {
-                this.setBottomPanelSize(this.lastBottomPanelSize);
             }
         }, this);
         dockPanel.hide();
@@ -243,84 +342,6 @@ export class ApplicationShell extends Widget {
             [0, 1, 0],
             { direction: 'top-to-bottom', spacing: 0 }
         );
-    }
-
-    /**
-     * Invoked when the title of a widget is dragged away from a tab bar. This method sets up
-     * a `mousemove` listener that expands side panels if necessary so the widget can be dropped
-     * into them.
-     */
-    protected onWidgetDragStarted(drag: Drag): void {
-        if (this.widgetDragListener) {
-            return;
-        }
-        const initialPanelState = {
-            leftCollapsed: this.leftPanelHandler.tabBar.currentTitle === null,
-            rightCollapsed: this.rightPanelHandler.tabBar.currentTitle === null,
-            bottomCollapsed: this.bottomPanel.isHidden
-        };
-        const modifiedPanelState = {
-            leftExpanded: false,
-            rightExpanded: false,
-            bottomExpanded: false
-        };
-        this.widgetDragListener = event => {
-            if (event.type === 'mousemove') {
-                const { clientX, clientY } = event as MouseEvent;
-                const threshold = this.options.sidePanelExpandThreshold;
-                if (clientX <= threshold) {
-                    // The mouse cursor is close to the left border, so expand the left panel if necessary
-                    if (!modifiedPanelState.leftExpanded) {
-                        this.leftPanelHandler.expand();
-                        modifiedPanelState.leftExpanded = true;
-                    }
-                } else if (initialPanelState.leftCollapsed && modifiedPanelState.leftExpanded) {
-                    // The mouse cursor is moved away from the left border
-                    this.leftPanelHandler.collapse();
-                    modifiedPanelState.leftExpanded = false;
-                }
-                if (clientX >= window.innerWidth - threshold) {
-                    // The mouse cursor is close to the right border, so expand the right panel if necessary
-                    if (!modifiedPanelState.rightExpanded) {
-                        this.rightPanelHandler.expand();
-                        modifiedPanelState.rightExpanded = true;
-                    }
-                } else if (initialPanelState.rightCollapsed && modifiedPanelState.rightExpanded) {
-                    // The mouse cursor is moved away from the right border
-                    this.rightPanelHandler.collapse();
-                    modifiedPanelState.rightExpanded = false;
-                }
-                const statusBarHeight = this.statusBar.node.clientHeight;
-                if (clientY >= window.innerHeight - threshold - statusBarHeight) {
-                    // The mouse cursor is close to the bottom border, so expand the bottom panel if necessary
-                    if (!modifiedPanelState.bottomExpanded) {
-                        this.expandBottomPanel();
-                        modifiedPanelState.bottomExpanded = true;
-                    }
-                } else if (initialPanelState.bottomCollapsed && modifiedPanelState.bottomExpanded) {
-                    // The mouse cursor is moved away from the bottom border
-                    this.collapseBottomPanel();
-                    modifiedPanelState.bottomExpanded = false;
-                }
-            }
-        };
-        document.addEventListener('mousemove', this.widgetDragListener, true);
-    }
-
-    /**
-     * Removes the listeners that are set up by `onWidgetDragStarted` and resets the shell to the
-     * previous state.
-     */
-    protected onWidgetDragEnded(drag: Drag): void {
-        if (this.widgetDragListener) {
-            document.removeEventListener('mousemove', this.widgetDragListener, true);
-            this.leftPanelHandler.refresh();
-            this.rightPanelHandler.refresh();
-            if (this.bottomPanel.isEmpty) {
-                this.collapseBottomPanel();
-            }
-            this.widgetDragListener = undefined;
-        }
     }
 
     /**
@@ -411,9 +432,22 @@ export class ApplicationShell extends Widget {
                 const parentHeight = parent.node.clientHeight;
                 const maxHeight = parentHeight * this.options.maxBottomPanelRatio;
                 const position = parentHeight - Math.min(size, maxHeight);
-                SidePanel.moveSplitPos(parent, index, position);
+
+                const promise = SidePanel.moveSplitPos(parent, index, position);
+                this.pendingUpdate = this.pendingUpdate.then(() => promise);
             }
         }
+    }
+
+    /**
+     * A promise that is resolved when all currently pending updates are done.
+     */
+    get pendingUpdates(): Promise<void> {
+        return Promise.all([
+            this.pendingUpdate,
+            this.leftPanelHandler.pendingUpdate,
+            this.rightPanelHandler.pendingUpdate
+        ]) as Promise<any>;
     }
 
     /**
@@ -423,7 +457,9 @@ export class ApplicationShell extends Widget {
         if (data) {
             if (data.type === 'tab-area') {
                 for (const widget of data.widgets) {
-                    this.track(widget);
+                    if (widget) {
+                        this.track(widget);
+                    }
                 }
             } else if (data.type === 'split-area') {
                 for (const child of data.children) {
@@ -431,7 +467,9 @@ export class ApplicationShell extends Widget {
                 }
             } else if (data.type === 'sidepanel' && data.items) {
                 for (const item of data.items) {
-                    this.track(item.widget);
+                    if (item.widget) {
+                        this.track(item.widget);
+                    }
                 }
             }
         }

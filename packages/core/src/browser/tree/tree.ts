@@ -67,8 +67,8 @@ export interface ITreeNode {
      */
     readonly description?: string;
     /**
-     * Test whether this node is visible.
-     * If undefined then visible.
+     * Test whether this node should be rendered.
+     * If undefined then node will be rendered.
      */
     readonly visible?: boolean;
     /**
@@ -214,7 +214,7 @@ export class Tree implements ITree {
         if (ICompositeTreeNode.is(parent)) {
             this.resolveChildren(parent).then(children => this.setChildren(parent, children));
         }
-        // FIXME: it shoud not be here
+        // FIXME: it should not be here
         // if the idea was to support refreshing of all kind of nodes, then API should be adapted
         this.fireChanged();
     }
