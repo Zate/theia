@@ -29,14 +29,6 @@ export function createServerWebSocketConnection(options: IServerOptions, onConne
         const logger = new ConsoleLogger();
         const connection = createWebSocketConnection(socket, logger);
         onConnect(connection);
-
-        const extWs = ws as ExtWebSocket;
-
-        extWs.isAlive = true;
-
-        ws.on('pong', () => {
-            extWs.isAlive = true;
-        });
     });
 }
 
@@ -55,6 +47,16 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
     const wss = new ws.Server({
         noServer: true,
         perMessageDeflate: false
+    });
+
+    options.server.on('connection', (ws: ws) => {
+        const extWs = ws as ExtWebSocket;
+
+        extWs.isAlive = true;
+
+        ws.on('pong', () => {
+            extWs.isAlive = true;
+        });
     });
 
     setInterval(() => {
