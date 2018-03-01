@@ -9,7 +9,8 @@ import { injectable, interfaces } from "inversify";
 import { listen as doListen, Logger, ConsoleLogger } from "vscode-ws-jsonrpc";
 import { ConnectionHandler, JsonRpcProxyFactory, JsonRpcProxy } from "../../common";
 import { Endpoint } from "../endpoint";
-import * from wska;
+const WebSocketKeepAlive = require('wska');
+
 
 @injectable()
 export class WebSocketConnectionProvider {
