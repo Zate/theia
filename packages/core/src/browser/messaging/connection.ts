@@ -10,14 +10,6 @@ import { listen as doListen, Logger, ConsoleLogger } from "vscode-ws-jsonrpc";
 import { ConnectionHandler, JsonRpcProxyFactory, JsonRpcProxy } from "../../common";
 import { Endpoint } from "../endpoint";
 import * from wska;
-//const ReconnectingWebSocket = require('reconnecting-websocket');
-
-// export interface WebSocketOptions {
-//     /**
-//      * True by default.
-//      */
-//     reconnecting?: boolean;
-// }
 
 @injectable()
 export class WebSocketConnectionProvider {
