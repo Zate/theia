@@ -11,7 +11,6 @@ import { ConnectionHandler, JsonRpcProxyFactory, JsonRpcProxy } from "../../comm
 import { Endpoint } from "../endpoint";
 const WebSocketKeepAlive = require('wska');
 
-
 @injectable()
 export class WebSocketConnectionProvider {
 
