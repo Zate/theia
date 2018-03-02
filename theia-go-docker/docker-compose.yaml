@@ -1,0 +1,31 @@
+version: "3"
+
+networks:
+  proxy:
+    external: true
+  internal:
+    external: false
+
+services:
+  theia:
+    image: zate75/theia:dev
+    container_name: theia
+    restart: always
+    labels:
+      - traefik.backend=theia
+      - traefik.frontend.rule=Host:ide.zate.org
+      - traefik.docker.network=proxy
+#      - traefik.port=80
+    ports:
+      - 3000:3000
+    networks:
+      - internal
+      - proxy
+    volumes:
+      - ./project:/home/project/go/src:cached
+      - ./.ssh:/root/.ssh:cached
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
