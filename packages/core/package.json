@@ -27,7 +27,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "perfect-scrollbar": "^1.3.0",
-    "reconnecting-websocket": "^3.0.7",
+    "wska": "^1.0.1",
     "reflect-metadata": "^0.1.10",
     "vscode-languageserver-types": "^3.6.1",
     "vscode-uri": "^1.0.1",

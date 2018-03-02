@@ -50,6 +50,9 @@ module.exports = {
         filename: 'bundle.js',
         path: outputPath
     },
+    externals: {
+        'crypto': '${this.ifBrowser('window.crypto', 'crypto')}'
+    },
     target: '${this.ifBrowser('web', 'electron-renderer')}',
     mode,
     node: {${this.ifElectron(`
@@ -57,8 +60,7 @@ module.exports = {
         __filename: false`, `
         fs: 'empty',
         child_process: 'empty',
-        net: 'empty',
-        crypto: 'empty'`)}
+        net: 'empty'`)}
     },
     module: {
         rules: [
