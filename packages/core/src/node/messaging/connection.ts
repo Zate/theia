@@ -52,10 +52,11 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
     wss.on('connection', (ws: ws) => {
 
         const extWs = ws as ExtWebSocket;
-
+        console.log("Connection started", wss.path);
         extWs.isAlive = true;
 
-        wss.on('pong', () => {
+        ws.on('pong', () => {
+            console.log("pong recieved");
             extWs.isAlive = true;
         });
     });
