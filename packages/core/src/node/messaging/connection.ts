@@ -65,7 +65,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
 
             const extWs = ws as ExtWebSocket;
 
-            if (!extWs.isAlive) {
+            if (extWs.isAlive == false) {
                 console.log("isAlive is not true");
                 return ws.terminate();
             }
