@@ -66,7 +66,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
 
             const extWs = ws as ExtWebSocket;
 
-            ws.send("ping");
+            ws.ping("ping");
 
             ws.on('pong', () => {
                 console.log("pong recieved");
