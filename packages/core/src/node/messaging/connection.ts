@@ -45,6 +45,25 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         perMessageDeflate: false
     });
 
+    // function noop() {}
+
+    // function heartbeat() {
+    // ws.isAlive = true;
+    // }
+
+    // wss.on('connection', function connection(ws) {
+    //     ws.isAlive = true;
+    //     ws.on('pong', heartbeat);
+    // });
+
+    // const interval = setInterval(function ping() {
+    // wss.clients.forEach(function each(ws) {
+    //     if (ws.isAlive === false) { return; } // ws.terminate(); }
+
+    //     ws.isAlive = false;
+    //     ws.ping(noop);
+    // });
+    // }, 30000);
     interface ExtWebSocket extends ws {
         isAlive: boolean;
     }
@@ -66,7 +85,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
 
             const extWs = ws as ExtWebSocket;
 
-            ws.ping("ping");
+            ws.ping();
 
             ws.on('pong', () => {
                 console.log("pong recieved");
@@ -76,7 +95,7 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
 
             if (extWs.isAlive === false) {
                 console.log("%s isAlive is not true", wss.path);
-                return; // ws.terminate();
+                return ws.terminate();
             }
 
             extWs.isAlive = false;
