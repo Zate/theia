@@ -51,13 +51,9 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
     wss.on('connection', (ws: ws) => {
 
         const extWs = ws as ExtWebSocket;
-        console.log("Connection started", wss.path);
+        console.log("Connection started");
         extWs.isAlive = true;
 
-        ws.on('pong', () => {
-            console.log("1 pong recieved");
-            extWs.isAlive = true;
-        });
     });
 
     setInterval(() => {
@@ -65,19 +61,17 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
 
             const extWs = ws as ExtWebSocket;
 
-            ws.ping();
-
             ws.on('pong', () => {
-                console.log("2 pong recieved");
+                console.log("pong recieved %s", ws.readyState);
                 extWs.isAlive = true;
-                return;
             });
 
             if (extWs.isAlive === false) {
                 console.log("%s isAlive is not true", wss.path);
-                return ws.terminate();
+                ws.terminate();
+                return;
             }
-
+            ws.ping();
             extWs.isAlive = false;
 
         });
