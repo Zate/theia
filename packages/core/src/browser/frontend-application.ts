@@ -86,14 +86,17 @@ export class FrontendApplication {
      * - reveal the application shell if it was hidden by a startup indicator
      */
     async start(): Promise<void> {
+        this.shell.loading = true;
         await this.startContributions();
         const host = await this.getHost();
         this.attachShell(host);
+        await new Promise(resolve => requestAnimationFrame(() => resolve()));
         await this.layoutRestorer.initializeLayout(this, this.contributions.getContributions());
         await this.revealShell(host);
 
         window.addEventListener('resize', () => this.shell.update());
         document.addEventListener('keydown', event => this.keybindings.run(event), true);
+        this.shell.loading = false;
     }
 
     /**
