@@ -84,6 +84,7 @@ RUN addgroup -g 1000 node \
     && source ~/.bashrc \
     && cd /home/theia \
     && git clone -b GH-1410 --single-branch https://github.com/Zate/theia.git \
+    && cd theia \
     && yarn \
     # && yarn --cache-folder ./ycache \
     # && rm -rf ./ycache \
