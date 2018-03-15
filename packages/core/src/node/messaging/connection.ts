@@ -35,12 +35,6 @@ export function openJsonRpcSocket(options: IServerOptions, onOpen: (socket: IWeb
     });
 }
 
-function noop() { }
-
-function heartbeat(this: any, err: any) {
-    this.isAlive = true;
-}
-
 export interface OnOpen {
     (webSocket: ws, request: http.IncomingMessage, socket: net.Socket, head: Buffer): void;
 }
@@ -50,18 +44,32 @@ export function openSocket(options: IServerOptions, onOpen: OnOpen): void {
         noServer: true,
         perMessageDeflate: false
     });
+    interface ExtWebSocket extends ws {
+        isAlive: boolean;
+    }
 
-    wss.on('connection', function connection(ws: any) {
-        ws.isAlive = true;
-        ws.on('pong', heartbeat);
+    wss.on('connection', (websocket: ws) => {
+
+        const extWs = websocket as ExtWebSocket;
+
+        websocket.on('pong', () => {
+            extWs.isAlive = true;
+        });
+
     });
 
-    setInterval(function ping() {
-        wss.clients.forEach(function each(ws: any) {
-            if (ws.isAlive === false) { return ws.terminate(); }
+    setInterval(() => {
+        wss.clients.forEach((websocket: ws) => {
 
-            ws.isAlive = false;
-            ws.ping(noop);
+            const extWs = websocket as ExtWebSocket;
+
+            if (extWs.isAlive === false) {
+                websocket.terminate();
+                return;
+            }
+            websocket.ping();
+            extWs.isAlive = false;
+
         });
     }, 30000);
 
