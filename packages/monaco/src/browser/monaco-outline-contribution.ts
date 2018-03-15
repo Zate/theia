@@ -8,7 +8,7 @@
 import { injectable, inject } from "inversify";
 import SymbolInformation = monaco.modes.SymbolInformation;
 import SymbolKind = monaco.modes.SymbolKind;
-import { FrontendApplicationContribution, FrontendApplication, ITreeNode } from "@theia/core/lib/browser";
+import { FrontendApplicationContribution, FrontendApplication, TreeNode } from "@theia/core/lib/browser";
 import { Range, EditorManager, EditorWidget } from '@theia/editor/lib/browser';
 import DocumentSymbolProviderRegistry = monaco.modes.DocumentSymbolProviderRegistry;
 import CancellationTokenSource = monaco.cancellation.CancellationTokenSource;
@@ -106,7 +106,9 @@ export class MonacoOutlineContribution implements FrontendApplicationContributio
             if (token.isCancellationRequested) {
                 return [];
             }
-            entries.push(...symbolInformation);
+            if (Array.isArray(symbolInformation)) {
+                entries.push(...symbolInformation);
+            }
         }
 
         return entries;
@@ -234,7 +236,7 @@ export interface MonacoOutlineSymbolInformationNode extends OutlineSymbolInforma
 }
 
 export namespace MonacoOutlineSymbolInformationNode {
-    export function is(node: ITreeNode): node is MonacoOutlineSymbolInformationNode {
+    export function is(node: TreeNode): node is MonacoOutlineSymbolInformationNode {
         return OutlineSymbolInformationNode.is(node) && 'uri' in node && 'range' in node;
     }
 }

@@ -6,88 +6,82 @@
  */
 
 import { injectable, inject } from "inversify";
-import { EditorDecorationsService, OverviewRulerLane, Range, DecorationType, EditorDecorationTypeProvider } from "@theia/editor/lib/browser";
-import { MergeConflictUpdateParams } from "./merge-conflicts-service";
-
-export enum MergeConflictsDecorationType {
-    CurrentMarker = 'merge-conflict-current-marker',
-    CurrentContent = 'merge-conflict-current-content',
-    BaseMarker = 'merge-conflict-base-marker',
-    BaseContent = 'merge-conflict-base-content',
-    IncomingMarker = 'merge-conflict-incoming-marker',
-    IncomingContent = 'merge-conflict-incoming-content',
-}
-
-const Type = MergeConflictsDecorationType;
+import { EditorDecorationsService, OverviewRulerLane, EditorDecoration, EditorDecorationOptions } from "@theia/editor/lib/browser";
+import { MergeConflicts } from "./merge-conflicts-provider";
 
 @injectable()
-export class MergeConflictsDecorations implements EditorDecorationTypeProvider {
+export class MergeConflictsDecorations {
 
     constructor(
         @inject(EditorDecorationsService) protected readonly decorationsService: EditorDecorationsService,
     ) { }
 
-    get(): DecorationType[] {
-        return [
-            {
-                type: Type.CurrentMarker,
-                backgroundColor: 'rgba(0, 255, 0, 0.1)',
-                isWholeLine: true,
-            },
-            {
-                type: Type.CurrentContent,
-                backgroundColor: 'rgba(0, 255, 0, 0.3)',
-                isWholeLine: true,
-                overviewRulerColor: 'rgba(0, 255, 0, 0.3)',
-                overviewRulerLane: OverviewRulerLane.Full
-            },
-            {
-                type: Type.BaseMarker,
-                backgroundColor: 'rgba(125, 125, 125, 0.1)',
-                isWholeLine: true,
-            },
-            {
-                type: Type.BaseContent,
-                backgroundColor: 'rgba(125, 125, 125, 0.3)',
-                isWholeLine: true,
-                overviewRulerColor: 'rgba(125, 125, 125, 0.3)',
-                overviewRulerLane: OverviewRulerLane.Full
-            },
-            {
-                type: Type.IncomingMarker,
-                backgroundColor: 'rgba(0, 0, 255, 0.1)',
-                isWholeLine: true,
-            },
-            {
-                type: Type.IncomingContent,
-                backgroundColor: 'rgba(0, 0, 255, 0.3)',
-                isWholeLine: true,
-                overviewRulerColor: 'rgba(0, 0, 255, 0.3)',
-                overviewRulerLane: OverviewRulerLane.Full
-            }
-        ];
-    }
-
-    onMergeConflictUpdate(params: MergeConflictUpdateParams): void {
+    decorate(params: MergeConflicts): void {
         const uri = params.uri;
         const mergeConflicts = params.mergeConflicts;
-        this.decorationsService.setDecorations(uri, Type.CurrentMarker, mergeConflicts.map(mergeConflict => ({ range: mergeConflict.current.marker! })));
-        this.decorationsService.setDecorations(uri, Type.CurrentContent, mergeConflicts.map(mergeConflict => ({ range: mergeConflict.current.content! })));
-        this.decorationsService.setDecorations(uri, Type.IncomingMarker, mergeConflicts.map(mergeConflict => ({ range: mergeConflict.incoming.marker! })));
-        this.decorationsService.setDecorations(uri, Type.IncomingContent, mergeConflicts.map(mergeConflict => ({ range: mergeConflict.incoming.content! })));
-
-        const baseMarkerRanges: Range[] = [];
-        const baseContentRanges: Range[] = [];
-        mergeConflicts.forEach(c => c.bases.forEach(b => {
-            if (b.marker) {
-                baseMarkerRanges.push(b.marker);
+        const newDecorations: EditorDecoration[] = [];
+        for (const mergeConflict of mergeConflicts) {
+            newDecorations.push({ range: mergeConflict.current.marker!, options: MergeConflictsDecorations.Options.CurrentMarker });
+            newDecorations.push({ range: mergeConflict.current.content!, options: MergeConflictsDecorations.Options.CurrentContent });
+            newDecorations.push({ range: mergeConflict.incoming.marker!, options: MergeConflictsDecorations.Options.IncomingMarker });
+            newDecorations.push({ range: mergeConflict.incoming.content!, options: MergeConflictsDecorations.Options.IncomingContent });
+            for (const base of mergeConflict.bases) {
+                if (base.marker) {
+                    newDecorations.push({ range: base.marker, options: MergeConflictsDecorations.Options.BaseMarker });
+                }
+                if (base.content) {
+                    newDecorations.push({ range: base.content, options: MergeConflictsDecorations.Options.BaseContent });
+                }
             }
-            if (b.content) {
-                baseContentRanges.push(b.content);
-            }
-        }));
-        this.decorationsService.setDecorations(uri, Type.BaseMarker, baseMarkerRanges.map(range => ({ range })));
-        this.decorationsService.setDecorations(uri, Type.BaseContent, baseContentRanges.map(range => ({ range })));
+        }
+        this.setDecorations(uri, newDecorations);
     }
 
+    protected setDecorations(uri: string, newDecorations: EditorDecoration[]) {
+        const kind = 'merge-conflicts';
+        this.decorationsService.setDecorations({ uri, kind, newDecorations });
+    }
+
+}
+
+export namespace MergeConflictsDecorations {
+
+    export const Options = {
+        CurrentMarker: <EditorDecorationOptions>{
+            isWholeLine: true,
+            className: 'merge-conflict-current-marker'
+        },
+        CurrentContent: <EditorDecorationOptions>{
+            isWholeLine: true,
+            className: 'merge-conflict-current-content',
+            overviewRuler: {
+                position: OverviewRulerLane.Full,
+                color: 'rgba(0, 255, 0, 0.3)',
+            }
+        },
+        BaseMarker: <EditorDecorationOptions>{
+            isWholeLine: true,
+            className: 'merge-conflict-base-marker'
+        },
+        BaseContent: <EditorDecorationOptions>{
+            isWholeLine: true,
+            className: 'merge-conflict-base-content',
+            overviewRuler: {
+                position: OverviewRulerLane.Full,
+                color: 'rgba(125, 125, 125, 0.3)',
+            }
+        },
+        IncomingMarker: <EditorDecorationOptions>{
+            isWholeLine: true,
+            className: 'merge-conflict-incoming-marker'
+        },
+        IncomingContent: <EditorDecorationOptions>{
+            isWholeLine: true,
+            className: 'merge-conflict-incoming-content',
+            overviewRuler: {
+                position: OverviewRulerLane.Full,
+                color: 'rgba(0, 0, 255, 0.3)',
+            }
+        },
+    };
 }

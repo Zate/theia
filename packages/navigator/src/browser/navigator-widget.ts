@@ -6,17 +6,14 @@
  */
 
 import { injectable, inject } from "inversify";
+import { h } from "@phosphor/virtualdom/lib";
 import { Message } from "@phosphor/messaging";
 import URI from "@theia/core/lib/common/uri";
-import { CommandService } from '@theia/core/lib/common/command';
-import { ContextMenuRenderer, TreeProps, ITreeModel, ITreeNode } from '@theia/core/lib/browser';
+import { SelectionService, CommandService } from '@theia/core/lib/common';
+import { ContextMenuRenderer, TreeProps, TreeModel, TreeNode, LabelProvider } from '@theia/core/lib/browser';
 import { FileTreeWidget, DirNode } from "@theia/filesystem/lib/browser";
+import { WorkspaceService, WorkspaceCommands } from '@theia/workspace/lib/browser';
 import { FileNavigatorModel } from "./navigator-model";
-import { WorkspaceCommands } from '@theia/workspace/lib/browser/workspace-frontend-contribution';
-import { SelectionService } from '@theia/core/lib/common';
-import { WorkspaceService } from '@theia/workspace/lib/browser';
-import { LabelProvider } from '@theia/core/lib/browser/label-provider';
-import { h } from "@phosphor/virtualdom/lib";
 
 export const FILE_NAVIGATOR_ID = 'files';
 export const LABEL = 'Files';
@@ -58,22 +55,24 @@ export class FileNavigatorWidget extends FileTreeWidget {
         });
     }
 
-    protected deflateForStorage(node: ITreeNode): object {
-        const copy = Object.assign({}, node) as any;
+    protected deflateForStorage(node: TreeNode): object {
+        // tslint:disable-next-line:no-any
+        const copy = { ...node } as any;
         if (copy.uri) {
             copy.uri = copy.uri.toString();
         }
         return super.deflateForStorage(copy);
     }
 
-    protected inflateFromStorage(node: any, parent?: ITreeNode): ITreeNode {
+    // tslint:disable-next-line:no-any
+    protected inflateFromStorage(node: any, parent?: TreeNode): TreeNode {
         if (node.uri) {
             node.uri = new URI(node.uri);
         }
         return super.inflateFromStorage(node, parent);
     }
 
-    protected renderTree(model: ITreeModel): h.Child {
+    protected renderTree(model: TreeModel): h.Child {
         return super.renderTree(model) || this.renderOpenWorkspaceDiv();
     }
 
@@ -84,13 +83,11 @@ export class FileNavigatorWidget extends FileTreeWidget {
     }
 
     protected handleCopy(event: ClipboardEvent): void {
-        const node = this.model.selectedFileStatNode;
-        if (!node) {
-            return;
+        const uris = this.model.selectedFileStatNodes.map(node => node.uri.toString());
+        if (uris.length > 0) {
+            event.clipboardData.setData('text/plain', uris.join('\n'));
+            event.preventDefault();
         }
-        const uri = node.uri.toString();
-        event.clipboardData.setData('text/plain', uri);
-        event.preventDefault();
     }
 
     protected handlePaste(event: ClipboardEvent): void {

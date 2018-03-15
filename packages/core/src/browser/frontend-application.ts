@@ -6,12 +6,12 @@
  */
 
 import { inject, injectable, named } from 'inversify';
-import { ContributionProvider, CommandRegistry, MenuModelRegistry } from '../common';
-import { KeybindingRegistry } from './keybinding';
-import { ApplicationShell, ShellLayoutRestorer } from './shell';
-import { Widget } from "./widgets";
-import { ILogger } from '../common';
+import { ContributionProvider, CommandRegistry, MenuModelRegistry, ILogger } from '../common';
 import { MaybePromise } from '../common/types';
+import { KeybindingRegistry } from './keybinding';
+import { Widget } from "./widgets";
+import { ApplicationShell } from './shell/application-shell';
+import { ShellLayoutRestorer } from './shell/shell-layout-restorer';
 
 /**
  * Clients can implement to get a callback for contributing widgets to a shell on start.
@@ -86,14 +86,17 @@ export class FrontendApplication {
      * - reveal the application shell if it was hidden by a startup indicator
      */
     async start(): Promise<void> {
+        this.shell.loading = true;
         await this.startContributions();
         const host = await this.getHost();
         this.attachShell(host);
+        await new Promise(resolve => requestAnimationFrame(() => resolve()));
         await this.layoutRestorer.initializeLayout(this, this.contributions.getContributions());
         await this.revealShell(host);
 
         window.addEventListener('resize', () => this.shell.update());
         document.addEventListener('keydown', event => this.keybindings.run(event), true);
+        this.shell.loading = false;
     }
 
     /**

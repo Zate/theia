@@ -18,47 +18,13 @@ declare module monaco.editor {
     }
 
     export interface ICommonCodeEditor {
-        readonly _codeEditorService: monaco.services.ICodeEditorService;
         readonly _commandService: monaco.commands.ICommandService;
         readonly _instantiationService: monaco.instantiation.IInstantiationService;
         readonly _contributions: {
             'editor.controller.quickOpenController': monaco.quickOpen.QuickOpenController
+            'editor.contrib.referencesController': monaco.referenceSearch.ReferencesController
         }
         readonly cursor: ICursor;
-        setDecorations(decorationTypeKey: string, decorationOptions: IDecorationOptions[]): void;
-    }
-
-    export interface IDecorationRenderOptions {
-        isWholeLine?: boolean;
-        backgroundColor?: string | ThemeColor;
-
-        outlineColor?: string | ThemeColor;
-        outlineStyle?: string;
-        outlineWidth?: string;
-
-        color?: string | ThemeColor;
-
-        overviewRulerColor?: string | ThemeColor;
-        overviewRulerLane?: OverviewRulerLane;
-
-        after?: IContentDecorationRenderOptions;
-    }
-
-    export interface IContentDecorationRenderOptions {
-        contentText?: string;
-        color?: string | ThemeColor;
-        backgroundColor?: string | ThemeColor;
-    }
-
-    export interface IDecorationOptions {
-        range: monaco.IRange;
-        hoverMessage?: IMarkdownString | IMarkdownString[];
-        renderOptions?: IContentDecorationRenderOptions;
-    }
-
-    export interface IMarkdownString {
-        value: string;
-        isTrusted?: boolean;
     }
 
     export interface ICursor {
@@ -107,7 +73,6 @@ declare module monaco.editor {
 
     export interface IEditorService {
         openEditor(input: IResourceInput, sideBySide?: boolean): monaco.Promise<IEditorReference | undefined>;
-
     }
 
     export interface IReference<T> extends monaco.IDisposable {
@@ -341,10 +306,6 @@ declare module monaco.services {
 
     export interface IStandaloneThemeService extends monaco.theme.IThemeService { }
 
-    export interface ICodeEditorService {
-        registerDecorationType(key: string, options: monaco.editor.IDecorationRenderOptions, parentTypeKey?: string): void;
-    }
-
     export module StaticServices {
         export const standaloneThemeService: LazyStaticService<IStandaloneThemeService>;
     }
@@ -357,6 +318,41 @@ declare module monaco.theme {
     }
     export interface IThemable { }
     export function attachQuickOpenStyler(widget: IThemable, themeService: IThemeService): monaco.IDisposable;
+}
+
+declare module monaco.referenceSearch {
+
+    export interface Location {
+        uri: Uri,
+        range: IRange
+    }
+
+    export interface OneReference { }
+
+    export interface ReferencesModel {
+        references: OneReference[]
+    }
+
+    export interface RequestOptions {
+        getMetaTitle(model: ReferencesModel): string;
+    }
+
+    export interface ReferenceWidget {
+        hide(): void;
+        show(range: IRange): void;
+        focus(): void;
+    }
+
+    export interface ReferencesController {
+        _widget: ReferenceWidget
+        _model: ReferencesModel | undefined
+        _ignoreModelChangeEvent: boolean;
+        _editorService: monaco.editor.IEditorService;
+        closeWidget(): void;
+        _gotoReference(ref: Location): void
+        toggleWidget(range: IRange, modelPromise: Promise<ReferencesModel> & { cancel: () => void }, options: RequestOptions): void;
+    }
+
 }
 
 declare module monaco.quickOpen {

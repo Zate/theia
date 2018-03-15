@@ -7,14 +7,13 @@
 
 import { MonacoToProtocolConverter, ProtocolToMonacoConverter } from 'monaco-languageclient';
 import URI from '@theia/core/lib/common/uri';
-import { Disposable, DisposableCollection } from '@theia/core/lib/common';
-import { Dimension, EditorDecorationsService, SetDecorationParams, DiffNavigator } from '@theia/editor/lib/browser';
+import { Disposable } from '@theia/core/lib/common';
+import { Dimension, EditorDecorationsService, DiffNavigator, DeltaDecorationParams } from '@theia/editor/lib/browser';
 import { MonacoEditorModel } from './monaco-editor-model';
 import { MonacoEditor } from './monaco-editor';
 import { MonacoDiffNavigatorFactory } from './monaco-diff-nagivator-factory';
 
 import IStandaloneDiffEditor = monaco.editor.IStandaloneDiffEditor;
-import IStandaloneCodeEditor = monaco.editor.IStandaloneCodeEditor;
 import IDiffEditorConstructionOptions = monaco.editor.IDiffEditorConstructionOptions;
 import IDiffNavigatorOptions = monaco.editor.IDiffNavigatorOptions;
 import IEditorOverrideServices = monaco.editor.IEditorOverrideServices;
@@ -48,6 +47,16 @@ export class MonacoDiffEditor extends MonacoEditor {
         this._diffEditor.setModel({ original, modified });
     }
 
+    getTargetUri(): URI | undefined {
+        if (this.diffEditor.getModifiedEditor().getModel().uri.scheme === 'file') {
+            return new URI(this.modifiedModel.uri);
+        }
+        if (this.diffEditor.getOriginalEditor().getModel().uri.scheme === 'file') {
+            return new URI(this.originalModel.uri);
+        }
+        return undefined;
+    }
+
     get diffEditor(): IStandaloneDiffEditor {
         return this._diffEditor;
     }
@@ -65,23 +74,6 @@ export class MonacoDiffEditor extends MonacoEditor {
         return this._diffEditor;
     }
 
-    protected addOnDidFocusHandler(codeEditor: IStandaloneCodeEditor) {
-        // increase the z-index for the focussed element hierarchy within the dockpanel
-        this.toDispose.push(codeEditor.onDidFocusEditor(() => {
-            const z = '1';
-            // already increased? -> do nothing
-            if (this._diffEditor.getDomNode().style.zIndex === z) {
-                return;
-            }
-            const toDisposeOnBlur = new DisposableCollection();
-            this.editor = codeEditor;
-            this.increaseZIndex(this._diffEditor.getDomNode(), z, toDisposeOnBlur);
-            toDisposeOnBlur.push(codeEditor.onDidBlurEditor(() =>
-                toDisposeOnBlur.dispose()
-            ));
-        }));
-    }
-
     protected resize(dimension: Dimension | null): void {
         if (this.node) {
             const layoutSize = this.computeLayoutSize(this.node, dimension);
@@ -94,18 +86,15 @@ export class MonacoDiffEditor extends MonacoEditor {
         return !!action && action.isSupported() && super.isActionSupported(id);
     }
 
-    setDecorations(params: SetDecorationParams): void {
-        const options = params.options;
-        const type = params.type;
+    deltaDecorations(params: DeltaDecorationParams): string[] {
         const uri = params.uri;
-        const decorationOptions = options.map(d => <monaco.editor.IDecorationOptions>{
-            ...d,
-            range: this.p2m.asRange(d.range)
-        });
+        const oldDecorations = params.oldDecorations;
+        const newDecorations = this.toDeltaDecorations(params);
         for (const editor of [this._diffEditor.getOriginalEditor(), this._diffEditor.getModifiedEditor()]) {
             if (editor.getModel().uri.toString() === uri) {
-                editor.setDecorations(type, decorationOptions);
+                return editor.deltaDecorations(oldDecorations, newDecorations);
             }
         }
+        return [];
     }
 }

@@ -27,7 +27,7 @@ export class MonacoQuickOpenService extends QuickOpenService {
     protected opts: MonacoQuickOpenControllerOpts | undefined;
     protected previousActiveElement: Element | undefined;
 
-    constructor( @inject(ILogger) protected readonly logger: ILogger) {
+    constructor(@inject(ILogger) protected readonly logger: ILogger) {
         super();
         const overlayWidgets = document.createElement('div');
         overlayWidgets.classList.add('quick-open-overlay');
@@ -160,7 +160,8 @@ export class MonacoQuickOpenControllerOptsImpl implements MonacoQuickOpenControl
         const labelHighlights = this.options.fuzzyMatchLabel ? this.matchesFuzzy(lookFor, item.getLabel()) : item.getLabelHighlights();
         const descriptionHighlights = this.options.fuzzyMatchDescription ? this.matchesFuzzy(lookFor, item.getDescription()) : item.getDescriptionHighlights();
         const detailHighlights = this.options.fuzzyMatchDetail ? this.matchesFuzzy(lookFor, item.getDetail()) : item.getDetailHighlights();
-        if (lookFor && !labelHighlights && !descriptionHighlights && !detailHighlights) {
+        if ((lookFor && !labelHighlights && !descriptionHighlights && !detailHighlights)
+            && !this.options.showItemsWithoutHighlight) {
             return undefined;
         }
         const entry = item instanceof QuickOpenGroupItem ? new QuickOpenEntryGroup(item) : new QuickOpenEntry(item);

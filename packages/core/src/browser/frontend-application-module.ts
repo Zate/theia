@@ -15,10 +15,7 @@ import {
     MessageService,
     MessageClient
 } from "../common";
-import {
-    KeybindingContextRegistry, KeybindingRegistry, KeybindingContext,
-    KeybindingContribution,
-} from "./keybinding";
+import { KeybindingRegistry, KeybindingContext, KeybindingContribution } from "./keybinding";
 import { FrontendApplication, FrontendApplicationContribution, DefaultFrontendApplicationContribution } from './frontend-application';
 import { DefaultOpenerService, OpenerService, OpenHandler } from './opener-service';
 import { HttpOpenHandler } from './http-open-handler';
@@ -28,7 +25,7 @@ import { LocalStorageService, StorageService } from './storage-service';
 import { WidgetFactory, WidgetManager } from './widget-manager';
 import {
     ApplicationShell, ApplicationShellOptions, DockPanelRenderer, TabBarRenderer,
-    TabBarRendererFactory, ShellLayoutRestorer, SidePanelHandler, SidePanelHandlerFactory
+    TabBarRendererFactory, ShellLayoutRestorer, SidePanelHandler, SidePanelHandlerFactory, SplitPositionHandler
 } from './shell';
 import { StatusBar, StatusBarImpl } from "./status-bar/status-bar";
 import { LabelParser } from './label-parser';
@@ -37,10 +34,14 @@ import { PreferenceService, PreferenceServiceImpl, PreferenceProviders } from '.
 import { ContextMenuRenderer } from './context-menu-renderer';
 import { ThemingCommandContribution, ThemeService } from './theming';
 import { ConnectionStatusService, FrontendConnectionStatusService, ApplicationConnectionStatusContribution } from './connection-status-service';
+import { DiffUriLabelProviderContribution } from './diff-uris';
 
 import '../../src/browser/style/index.css';
 import 'font-awesome/css/font-awesome.min.css';
 import "file-icons-js/css/style.css";
+import { ApplicationServer, applicationPath } from "../common/application-protocol";
+import { WebSocketConnectionProvider } from "./messaging/connection";
+import { AboutDialog, AboutDialogProps } from "./about-dialog";
 
 export const frontendApplicationModule = new ContainerModule((bind, unbind, isBound, rebind) => {
     bind(FrontendApplication).toSelf().inSingletonScope();
@@ -51,6 +52,7 @@ export const frontendApplicationModule = new ContainerModule((bind, unbind, isBo
     bind(ApplicationShell).toSelf().inSingletonScope();
     bind(SidePanelHandlerFactory).toAutoFactory(SidePanelHandler);
     bind(SidePanelHandler).toSelf();
+    bind(SplitPositionHandler).toSelf().inSingletonScope();
 
     bind(DockPanelRenderer).toSelf();
     bind(TabBarRendererFactory).toFactory(context => () => {
@@ -84,10 +86,8 @@ export const frontendApplicationModule = new ContainerModule((bind, unbind, isBo
     bindContributionProvider(bind, MenuContribution);
 
     bind(KeybindingRegistry).toSelf().inSingletonScope();
-    bindContributionProvider(bind, KeybindingContribution);
-
-    bind(KeybindingContextRegistry).toSelf().inSingletonScope();
     bindContributionProvider(bind, KeybindingContext);
+    bindContributionProvider(bind, KeybindingContribution);
 
     bind(MessageClient).toSelf().inSingletonScope();
     bind(MessageService).toSelf().inSingletonScope();
@@ -113,6 +113,7 @@ export const frontendApplicationModule = new ContainerModule((bind, unbind, isBo
     bindContributionProvider(bind, LabelProviderContribution);
     bind(LabelProvider).toSelf().inSingletonScope();
     bind(LabelProviderContribution).to(DefaultUriLabelProviderContribution).inSingletonScope();
+    bind(LabelProviderContribution).to(DiffUriLabelProviderContribution).inSingletonScope();
 
     bind(CommandContribution).to(ThemingCommandContribution).inSingletonScope();
 
@@ -127,6 +128,14 @@ export const frontendApplicationModule = new ContainerModule((bind, unbind, isBo
     bind(FrontendApplicationContribution).toDynamicValue(ctx => ctx.container.get(FrontendConnectionStatusService)).inSingletonScope();
     bind(ApplicationConnectionStatusContribution).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toDynamicValue(ctx => ctx.container.get(ApplicationConnectionStatusContribution)).inSingletonScope();
+
+    bind(ApplicationServer).toDynamicValue(ctx => {
+        const provider = ctx.container.get(WebSocketConnectionProvider);
+        return provider.createProxy<ApplicationServer>(applicationPath);
+    }).inSingletonScope();
+
+    bind(AboutDialog).toSelf().inSingletonScope();
+    bind(AboutDialogProps).toConstantValue({ title: 'Theia' });
 });
 
 const theme = ThemeService.get().getCurrentTheme().id;

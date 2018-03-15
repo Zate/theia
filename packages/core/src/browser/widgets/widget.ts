@@ -8,8 +8,10 @@
 import { injectable, decorate, unmanaged } from "inversify";
 import { Widget } from "@phosphor/widgets";
 import { Message } from "@phosphor/messaging";
-import { Disposable, DisposableCollection } from '../../common';
-import { Key, KeyCode } from '../keys';
+import { Disposable, DisposableCollection, MaybePromise } from '../../common';
+import { KeyCode, KeysOrKeyCodes } from '../keys';
+
+import PerfectScrollbar from 'perfect-scrollbar';
 
 decorate(injectable(), Widget);
 decorate(unmanaged(), Widget, 0);
@@ -20,12 +22,15 @@ export * from "@phosphor/messaging";
 export const DISABLED_CLASS = 'theia-mod-disabled';
 export const COLLAPSED_CLASS = 'theia-mod-collapsed';
 export const SELECTED_CLASS = 'theia-mod-selected';
+export const FOCUS_CLASS = 'theia-mod-focus';
 
 @injectable()
 export class BaseWidget extends Widget {
 
     protected readonly toDispose = new DisposableCollection();
     protected readonly toDisposeOnDetach = new DisposableCollection();
+    protected scrollBar?: PerfectScrollbar;
+    protected scrollOptions?: PerfectScrollbar.Options;
 
     dispose(): void {
         if (this.isDisposed) {
@@ -45,6 +50,39 @@ export class BaseWidget extends Widget {
         super.onBeforeDetach(msg);
     }
 
+    protected onAfterAttach(msg: Message): void {
+        super.onAfterAttach(msg);
+        if (this.scrollOptions) {
+            (async () => {
+                const container = await this.getScrollContainer();
+                container.style.overflow = 'hidden';
+                this.scrollBar = new PerfectScrollbar(container, {
+                    suppressScrollX: true
+                });
+
+                this.toDispose.push(Disposable.create(async () => {
+                    if (this.scrollBar) {
+                        this.scrollBar.destroy();
+                        this.scrollBar = undefined;
+                    }
+                    // tslint:disable-next-line:no-null-keyword
+                    container.style.overflow = null;
+                }));
+            })();
+        }
+    }
+
+    protected getScrollContainer(): MaybePromise<HTMLElement> {
+        return this.node;
+    }
+
+    protected onUpdateRequest(msg: Message): void {
+        super.onUpdateRequest(msg);
+        if (this.scrollBar) {
+            this.scrollBar.update();
+        }
+    }
+
     protected addUpdateListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, type: K, useCapture?: boolean): void {
         this.addEventListener(element, type, e => {
             this.update();
@@ -56,8 +94,9 @@ export class BaseWidget extends Widget {
         this.toDisposeOnDetach.push(addEventListener(element, type, listener));
     }
 
-    protected addKeyListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, keybinding: Key, action: () => void, ...additionalEventTypes: K[]): void {
-        this.toDisposeOnDetach.push(addKeyListener(element, keybinding, action, ...additionalEventTypes));
+    // tslint:disable-next-line:max-line-length
+    protected addKeyListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, keysOrKeyCodes: KeysOrKeyCodes, action: (event: KeyboardEvent) => void, ...additionalEventTypes: K[]): void {
+        this.toDisposeOnDetach.push(addKeyListener(element, keysOrKeyCodes, action, ...additionalEventTypes));
     }
 
     protected addClipboardListener<K extends 'cut' | 'copy' | 'paste'>(element: HTMLElement, type: K, listener: EventListenerOrEventListenerObject<K>): void {
@@ -80,11 +119,13 @@ export function createIconButton(...classNames: string[]): HTMLSpanElement {
     return button;
 }
 
+// tslint:disable-next-line:no-any
 export type EventListener<K extends keyof HTMLElementEventMap> = (this: HTMLElement, event: HTMLElementEventMap[K]) => any;
 export interface EventListenerObject<K extends keyof HTMLElementEventMap> {
     handleEvent(evt: HTMLElementEventMap[K]): void;
 }
 export namespace EventListenerObject {
+    // tslint:disable-next-line:no-any
     export function is<K extends keyof HTMLElementEventMap>(listener: any | undefined): listener is EventListenerObject<K> {
         return !!listener && 'handleEvent' in listener;
     }
@@ -99,20 +140,23 @@ export function addEventListener<K extends keyof HTMLElementEventMap>(
     );
 }
 
-export function addKeyListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, keybinding: Key, action: () => void, ...additionalEventTypes: K[]): Disposable {
+// tslint:disable-next-line:max-line-length
+export function addKeyListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, keysOrKeyCodes: KeysOrKeyCodes, action: (event: KeyboardEvent) => void, ...additionalEventTypes: K[]): Disposable {
     const toDispose = new DisposableCollection();
-    const keyCode = KeyCode.createKeyCode({ first: keybinding });
+    const isAcceptedKeyCode = (actual: KeyCode) => KeysOrKeyCodes.toKeyCodes(keysOrKeyCodes).some(k => k.equals(actual));
     toDispose.push(addEventListener(element, 'keydown', e => {
         const kc = KeyCode.createKeyCode(e);
-        if (kc.equals(keyCode)) {
-            action();
+        if (isAcceptedKeyCode(kc)) {
+            action(e);
             e.stopPropagation();
             e.preventDefault();
         }
     }));
     for (const type of additionalEventTypes) {
         toDispose.push(addEventListener(element, type, e => {
-            action();
+            // tslint:disable-next-line:no-any
+            const event = (type as any)['keydown'];
+            action(event);
             e.stopPropagation();
             e.preventDefault();
         }));

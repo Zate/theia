@@ -5,21 +5,22 @@
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-import { h } from "@phosphor/virtualdom";
-import { DiffUris } from '@theia/editor/lib/browser/diff-uris';
-import { VirtualRenderer, open, OpenerService, StatefulWidget, SELECTED_CLASS } from "@theia/core/lib/browser";
-import { GIT_RESOURCE_SCHEME } from '../git-resource';
-import URI from "@theia/core/lib/common/uri";
-import { GitFileChange, GitFileStatus, Git, WorkingDirectoryStatus } from '../../common';
-import { GitBaseWidget, GitFileChangeNode } from "../git-base-widget";
-import { DiffNavigatorProvider, DiffNavigator } from "@theia/editor/lib/browser/diff-navigator";
-import { EditorManager } from "@theia/editor/lib/browser";
-import { GitWatcher } from "../../common/git-watcher";
 import { inject, injectable, postConstruct } from "inversify";
+import { h } from "@phosphor/virtualdom";
+import URI from "@theia/core/lib/common/uri";
+import { VirtualRenderer, StatefulWidget, SELECTED_CLASS, DiffUris } from "@theia/core/lib/browser";
+import { EditorManager, EditorOpenerOptions, EditorWidget, DiffNavigatorProvider, DiffNavigator } from "@theia/editor/lib/browser";
+import { GitFileChange, GitFileStatus, Git, WorkingDirectoryStatus } from '../../common';
+import { GitWatcher } from "../../common";
+import { GIT_RESOURCE_SCHEME } from '../git-resource';
+import { GitNavigableListWidget } from "../git-navigable-list-widget";
+import { GitFileChangeNode } from "../git-widget";
+
+// tslint:disable:no-null-keyword
 
 export const GIT_DIFF = "git-diff";
 @injectable()
-export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements StatefulWidget {
+export class GitDiffWidget extends GitNavigableListWidget<GitFileChangeNode> implements StatefulWidget {
 
     protected fileChangeNodes: GitFileChangeNode[];
     protected options: Git.Options.Diff;
@@ -28,7 +29,6 @@ export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements S
 
     @inject(Git) protected readonly git: Git;
     @inject(DiffNavigatorProvider) protected readonly diffNavigatorProvider: DiffNavigatorProvider;
-    @inject(OpenerService) protected readonly openerService: OpenerService;
     @inject(EditorManager) protected readonly editorManager: EditorManager;
     @inject(GitWatcher) protected readonly gitWatcher: GitWatcher;
 
@@ -108,41 +108,84 @@ export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements S
     }
 
     protected renderDiffListHeader(): h.Child {
-        const elements = [];
+        return this.doRenderDiffListHeader(
+            this.renderPathHeader(),
+            this.renderRevisionHeader(),
+            this.renderToolbar()
+        );
+    }
+    protected doRenderDiffListHeader(...children: h.Child[]): h.Child {
+        return h.div({ className: "diff-header" }, ...children);
+    }
+    protected renderHeaderRow({ name, value, classNames }: { name: h.Child, value: h.Child, classNames?: string[] }): h.Child {
+        if (value === null) {
+            return null;
+        }
+        const className = ['header-row', ...(classNames || [])].join(' ');
+        return h.div({ className },
+            h.div({ className: 'theia-header' }, name),
+            h.div({ className: 'header-value' }, value));
+    }
+
+    protected renderPathHeader(): h.Child {
+        return this.renderHeaderRow({
+            name: 'path',
+            value: this.renderPath()
+        });
+    }
+    protected renderPath(): h.Child {
         if (this.options.uri) {
             const path = this.relativePath(this.options.uri);
             if (path.length > 0) {
-                elements.push(h.div({ className: 'header-row' },
-                    h.div({ className: 'theia-header' }, 'path:'),
-                    h.div({ className: 'header-value' }, '/' + path)));
+                return '/' + path;
             }
         }
-        if (this.fromRevision) {
-            let revision;
-            if (typeof this.fromRevision === 'string') {
-                revision = h.div({ className: 'header-value' }, this.fromRevision);
-            } else {
-                revision = h.div({ className: 'header-value' }, (this.toRevision || 'HEAD') + '~' + this.fromRevision);
-            }
-            elements.push(h.div({ className: 'header-row' },
-                h.div({ className: 'theia-header' }, 'revision: '),
-                revision));
+        return null;
+    }
+
+    protected renderRevisionHeader(): h.Child {
+        return this.renderHeaderRow({
+            name: 'revision: ',
+            value: this.renderRevision()
+        });
+    }
+    protected renderRevision(): h.Child {
+        if (!this.fromRevision) {
+            return null;
         }
-        const header = h.div({ className: 'theia-header' }, 'Files changed');
-        const leftButton = h.span({
+        if (typeof this.fromRevision === 'string') {
+            return this.fromRevision;
+        }
+        return (this.toRevision || 'HEAD') + '~' + this.fromRevision;
+    }
+
+    protected renderToolbar(): h.Child {
+        return this.doRenderToolbar(
+            this.renderNavigationLeft(),
+            this.renderNavigationRight()
+        );
+    }
+    protected doRenderToolbar(...children: h.Child[]) {
+        return this.renderHeaderRow({
+            classNames: ['space-between'],
+            name: 'Files changed',
+            value: h.div({ className: 'lrBtns' }, ...children)
+        });
+    }
+
+    protected renderNavigationLeft(): h.Child {
+        return h.span({
             className: "fa fa-arrow-left",
             title: "Previous Change",
-            onclick: () => this.handleLeft()
+            onclick: () => this.navigateLeft()
         });
-        const rightButton = h.span({
+    }
+    protected renderNavigationRight(): h.Child {
+        return h.span({
             className: "fa fa-arrow-right",
             title: "Next Change",
-            onclick: () => this.handleRight()
+            onclick: () => this.navigateRight()
         });
-        const lrBtns = h.div({ className: 'lrBtns' }, leftButton, rightButton);
-        const headerRow = h.div({ className: 'header-row space-between' }, header, lrBtns);
-
-        return h.div({ className: "diff-header" }, ...elements, headerRow);
     }
 
     protected renderFileChangeList(): h.Child {
@@ -166,7 +209,7 @@ export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements S
                 this.selectNode(change);
             },
             ondblclick: () => {
-                this.openFile(change);
+                this.revealChange(change);
             }
         }, iconSpan, nameSpan, pathSpan));
         if (change.extraIconClassName) {
@@ -182,7 +225,7 @@ export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements S
         return h.div({ className: `gitItem noselect${change.selected ? ' ' + SELECTED_CLASS : ''}` }, ...elements);
     }
 
-    protected handleRight(): void {
+    protected navigateRight(): void {
         const selected = this.getSelected();
         if (selected && GitFileChangeNode.is(selected)) {
             const uri = this.getUriToOpen(selected);
@@ -196,7 +239,7 @@ export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements S
                         this.openSelected();
                     }
                 } else {
-                    this.openFile(selected);
+                    this.revealChange(selected);
                 }
             });
         } else if (this.gitNodes.length > 0) {
@@ -205,7 +248,7 @@ export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements S
         }
     }
 
-    protected handleLeft(): void {
+    protected navigateLeft(): void {
         const selected = this.getSelected();
         if (GitFileChangeNode.is(selected)) {
             const uri = this.getUriToOpen(selected);
@@ -219,20 +262,38 @@ export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements S
                         this.openSelected();
                     }
                 } else {
-                    this.openFile(selected);
+                    this.revealChange(selected);
                 }
             });
         }
     }
 
-    protected handleEnter(): void {
+    protected selectNextNode() {
+        const idx = this.indexOfSelected;
+        if (idx >= 0 && idx < this.gitNodes.length - 1) {
+            this.selectNode(this.gitNodes[idx + 1]);
+        } else if (this.gitNodes.length > 0 && (idx === -1 || idx === this.gitNodes.length - 1)) {
+            this.selectNode(this.gitNodes[0]);
+        }
+    }
+
+    protected selectPreviousNode() {
+        const idx = this.indexOfSelected;
+        if (idx > 0) {
+            this.selectNode(this.gitNodes[idx - 1]);
+        } else if (idx === 0) {
+            this.selectNode(this.gitNodes[this.gitNodes.length - 1]);
+        }
+    }
+
+    protected handleListEnter(): void {
         this.openSelected();
     }
 
     protected openSelected(): void {
         const selected = this.getSelected();
         if (selected) {
-            this.openFile(selected);
+            this.revealChange(selected);
         }
     }
 
@@ -270,12 +331,19 @@ export class GitDiffWidget extends GitBaseWidget<GitFileChangeNode> implements S
         return uriToOpen;
     }
 
-    protected openFile(change: GitFileChange) {
-        const uriToOpen = this.getUriToOpen(change);
-        this.doOpen(uriToOpen);
+    async openChanges(uri: URI, options?: EditorOpenerOptions): Promise<EditorWidget | undefined> {
+        const stringUri = uri.toString();
+        const change = this.fileChangeNodes.find(n => n.uri.toString() === stringUri);
+        return change && this.openChange(change, options);
     }
 
-    protected doOpen(uriToOpen: URI) {
-        open(this.openerService, uriToOpen, { mode: 'reveal' });
+    protected openChange(change: GitFileChange, options?: EditorOpenerOptions): Promise<EditorWidget | undefined> {
+        const uriToOpen = this.getUriToOpen(change);
+        return this.editorManager.open(uriToOpen, options);
     }
+
+    protected async revealChange(change: GitFileChange): Promise<void> {
+        await this.openChange(change, { mode: 'reveal' });
+    }
+
 }

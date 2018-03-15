@@ -20,11 +20,12 @@ import {
     RevealRangeOptions,
     RevealPositionOptions,
     EditorDecorationsService,
-    SetDecorationParams,
+    DeltaDecorationParams,
 } from '@theia/editor/lib/browser';
 import { MonacoEditorModel } from "./monaco-editor-model";
 
 import IEditorConstructionOptions = monaco.editor.IEditorConstructionOptions;
+import IModelDeltaDecoration = monaco.editor.IModelDeltaDecoration;
 import IEditorOverrideServices = monaco.editor.IEditorOverrideServices;
 import IStandaloneCodeEditor = monaco.editor.IStandaloneCodeEditor;
 import IBoxSizing = ElementExt.IBoxSizing;
@@ -60,13 +61,6 @@ export class MonacoEditor implements TextEditor, IEditorReference {
         this.minHeight = options && options.minHeight !== undefined ? options.minHeight : -1;
         this.toDispose.push(this.create(options, override));
         this.addHandlers(this.editor);
-        this.registerDecorationTypes();
-    }
-
-    protected registerDecorationTypes(): void {
-        const decoarationTypes = this.decorationsService.getDecorationTypes();
-        const codeEditorService = this.editor._codeEditorService;
-        decoarationTypes.forEach(decoarationType => codeEditorService.registerDecorationType(decoarationType.type, decoarationType));
     }
 
     protected create(options?: IEditorConstructionOptions, override?: monaco.editor.IEditorOverrideServices): Disposable {
@@ -102,23 +96,10 @@ export class MonacoEditor implements TextEditor, IEditorReference {
         this.toDispose.push(codeEditor.onDidBlurEditor(() =>
             this.onFocusChangedEmitter.fire(this.isFocused())
         ));
-        this.addOnDidFocusHandler(codeEditor);
     }
 
-    protected addOnDidFocusHandler(codeEditor: IStandaloneCodeEditor): void {
-        // increase the z-index for the focussed element hierarchy within the dockpanel
-        this.toDispose.push(this.editor.onDidFocusEditor(() => {
-            const z = '1';
-            // already increased? -> do nothing
-            if (this.editor.getDomNode().style.zIndex === z) {
-                return;
-            }
-            const toDisposeOnBlur = new DisposableCollection();
-            this.increaseZIndex(this.editor.getDomNode(), z, toDisposeOnBlur);
-            toDisposeOnBlur.push(this.editor.onDidBlurEditor(() =>
-                toDisposeOnBlur.dispose()
-            ));
-        }));
+    getTargetUri(): URI | undefined {
+        return this.uri;
     }
 
     get onDispose() {
@@ -205,18 +186,6 @@ export class MonacoEditor implements TextEditor, IEditorReference {
 
     get onFocusChanged(): Event<boolean> {
         return this.onFocusChangedEmitter.event;
-    }
-
-    protected increaseZIndex(element: HTMLElement, z: string, toDisposeOnBlur: DisposableCollection) {
-        const parent = element.parentElement;
-        if (parent && !element.classList.contains('p-DockPanel')) {
-            const oldIndex = element.style.zIndex;
-            toDisposeOnBlur.push(Disposable.create(() =>
-                element.style.zIndex = oldIndex
-            ));
-            element.style.zIndex = z;
-            this.increaseZIndex(parent, z, toDisposeOnBlur);
-        }
     }
 
     dispose() {
@@ -314,21 +283,21 @@ export class MonacoEditor implements TextEditor, IEditorReference {
         return this.editor._instantiationService;
     }
 
-    get codeEditorService(): monaco.services.ICodeEditorService {
-        return this.editor._codeEditorService;
+    deltaDecorations(params: DeltaDecorationParams): string[] {
+        const oldDecorations = params.oldDecorations;
+        const newDecorations = this.toDeltaDecorations(params);
+        return this.editor.deltaDecorations(oldDecorations, newDecorations);
     }
 
-    setDecorations(params: SetDecorationParams): void {
-        const options = params.options;
-        const type = params.type;
-        const decorationOptions = options.map(d => <monaco.editor.IDecorationOptions>{
-            ...d,
-            range: this.p2m.asRange(d.range)
+    protected toDeltaDecorations(params: DeltaDecorationParams): IModelDeltaDecoration[] {
+        return params.newDecorations.map(decoration => <IModelDeltaDecoration>{
+            ...decoration,
+            range: this.p2m.asRange(decoration.range),
         });
-        this.editor.setDecorations(type, decorationOptions);
     }
 
 }
+
 export namespace MonacoEditor {
     export interface ICommonOptions {
         /**

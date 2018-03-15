@@ -9,8 +9,8 @@ import { Position, Range } from 'vscode-languageserver-types';
 import * as lsp from 'vscode-languageserver-types';
 import URI from "@theia/core/lib/common/uri";
 import { Event, Disposable } from '@theia/core/lib/common';
-import { Saveable } from '@theia/core/lib/browser';
-import { DecorationOptions } from './editor-decorations-service';
+import { Saveable, Navigatable } from '@theia/core/lib/browser';
+import { EditorDecoration } from './editor-decorations-service';
 
 export {
     Position, Range
@@ -20,9 +20,10 @@ export const TextEditorProvider = Symbol('TextEditorProvider');
 export type TextEditorProvider = (uri: URI) => Promise<TextEditor>;
 
 export interface TextEditorDocument extends lsp.TextDocument, Saveable, Disposable {
+    getLineContent(lineNumber: number): string;
 }
 
-export interface TextEditor extends Disposable, TextEditorSelection {
+export interface TextEditor extends Disposable, TextEditorSelection, Navigatable {
     readonly node: HTMLElement;
 
     readonly uri: URI;
@@ -54,11 +55,11 @@ export interface TextEditor extends Disposable, TextEditorSelection {
     setSize(size: Dimension): void;
 
     /**
-     * Applies decorations for given type and options.
-     * Previous decoration of the same type are not preserved.
-     * To remove decorations of a type, pass an empty options array.
+     * Applies given new decorations and removes old decorations identified by ids.
+     *
+     * @returns identifiers of applied decorations, which can be removed in next call.
      */
-    setDecorations(params: SetDecorationParams): void;
+    deltaDecorations(params: DeltaDecorationParams): string[];
 }
 
 export interface Dimension {
@@ -83,8 +84,14 @@ export interface RevealRangeOptions {
 
 export interface SetDecorationParams {
     uri: string;
-    type: string;
-    options: DecorationOptions[];
+    kind: string;
+    newDecorations: EditorDecoration[];
+}
+
+export interface DeltaDecorationParams {
+    uri: string;
+    oldDecorations: string[];
+    newDecorations: EditorDecoration[];
 }
 
 export namespace TextEditorSelection {
