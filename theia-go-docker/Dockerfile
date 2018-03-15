@@ -37,9 +37,9 @@ RUN ALPINE_GLIBC_BASE_URL="https://github.com/sgerrand/alpine-pkg-glibc/releases
 
 FROM theia-alpinelibc as theia-stage2
 
-ARG version=next
+#ARG version=next
 WORKDIR /home/theia
-ADD $version.package.json ./package.json
+#ADD $version.package.json ./package.json
 
 RUN addgroup -g 1000 node \
     && adduser -u 1000 -G node -s /bin/sh -D node \
@@ -83,10 +83,12 @@ RUN addgroup -g 1000 node \
     && echo 'export PS1="\${debian_chroot:+(\$debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\] \[$txtcyn\]\$git_branch\[$txtred\]\$git_dirty\[$txtrst\]\$ "' >> ~/.bashrc \
     && source ~/.bashrc \
     && cd /home/theia \
-    && yarn --cache-folder ./ycache \
-    && rm -rf ./ycache \
-    && yarn theia build \
-    && yarn cache clean \
+    && git clone -b GH-1410 --single-branch https://github.com/Zate/theia.git \
+    && yarn \
+    # && yarn --cache-folder ./ycache \
+    # && rm -rf ./ycache \
+    # && yarn theia build \
+    # && yarn cache clean \
     && mkdir -p /home/project/go \
     && export PATH="/usr/local/go/bin:$PATH" \
     && export GOPATH="/home/project/go" \
@@ -128,11 +130,11 @@ RUN addgroup -g 1000 node \
     && go get -u github.com/davidrjenni/reftools/cmd/fillstruct \
     && echo "fillstruct installed." \
     && echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf \
-    && yarn --cache-folder ./ycache \
-    && rm -rf ./ycache \
-    && yarn theia build \
-    && rm -rf ./node_modules/electron* \
-    && yarn cache clean \
+    # && yarn --cache-folder ./ycache \
+    # && rm -rf ./ycache \
+    # && yarn theia build \
+    # && rm -rf ./node_modules/electron* \
+    # && yarn cache clean \
     # Optional for my personal use
     && apk del .build-deps \
     && printf '[user]\n    name = Zate\n    email = zate75@gmail.com\n' > /root/.gitconfig \
@@ -149,7 +151,7 @@ ENV PATH "$GOPATH/bin:$PATH"
 ENV TDIR "/home/theia"
 ADD docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
-    
+
 
 
 
