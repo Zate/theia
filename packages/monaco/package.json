@@ -3,7 +3,7 @@
   "version": "0.3.7",
   "description": "Theia - Monaco Extension",
   "dependencies": {
-    "@theia/core": "^0.3.7",
+    "@theia/core": "^0.14.0",
     "@theia/editor": "^0.3.7",
     "@theia/filesystem": "^0.3.7",
     "@theia/languages": "^0.3.7",
