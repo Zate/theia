@@ -5,7 +5,7 @@
   "dependencies": {
     "@theia/core": "^0.3.7",
     "@theia/editor": "^0.3.7",
-    "@theia/filesystem": "^0.3.7",
+    "@theia/filesystem": "^0.14.0",
     "@theia/languages": "^0.3.7",
     "@theia/markers": "^0.3.7",
     "@theia/outline-view": "^0.3.7",
