@@ -4,7 +4,7 @@
   "description": "Theia - Search in workspace",
   "dependencies": {
     "@theia/core": "^0.3.7",
-    "@theia/editor": "^0.3.7",
+    "@theia/editor": "^0.6.0",
     "vscode-ripgrep": "^0.7.1-patch.0"
   },
   "publishConfig": {
