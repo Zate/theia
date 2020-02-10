@@ -21,12 +21,13 @@
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "scripts": {
-    "prepare": "yarn run clean && yarn run build",
+    "prepare": "npm run snyk-protect && yarn run clean && yarn run build",
     "clean": "theiaext clean",
     "build": "theiaext build",
     "watch": "theiaext watch",
     "test": "theiaext test",
-    "docs": "theiaext docs"
+    "docs": "theiaext docs",
+    "snyk-protect": "snyk protect"
   },
   "dependencies": {
     "@theia/application-package": "0.3.7",
@@ -45,12 +46,14 @@
     "umd-compat-loader": "^2.1.1",
     "url-loader": "^1.0.1",
     "webpack": "^4.0.0",
-    "webpack-cli": "^2.0.12"
+    "webpack-cli": "^2.0.12",
+    "snyk": "^1.290.2"
   },
   "devDependencies": {
     "@theia/ext-scripts": "^0.2.0"
   },
   "nyc": {
     "extends": "../../configs/nyc.json"
-  }
+  },
+  "snyk": true
 }
