@@ -3,7 +3,7 @@
   "version": "0.3.7",
   "description": "Theia - Merge Conflicts Extension",
   "dependencies": {
-    "@theia/core": "^0.3.7",
+    "@theia/core": "^0.6.0",
     "@theia/editor": "^0.3.7",
     "@theia/languages": "^0.3.7"
   },
