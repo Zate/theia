@@ -4,7 +4,7 @@
   "description": "Theia - Merge Conflicts Extension",
   "dependencies": {
     "@theia/core": "^0.3.7",
-    "@theia/editor": "^0.3.7",
+    "@theia/editor": "^0.6.0",
     "@theia/languages": "^0.3.7"
   },
   "publishConfig": {
