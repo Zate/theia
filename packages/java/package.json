@@ -6,7 +6,7 @@
     "@theia/core": "^0.3.7",
     "@theia/editor": "^0.3.7",
     "@theia/languages": "^0.3.7",
-    "@theia/monaco": "^0.3.7",
+    "@theia/monaco": "^0.6.0",
     "@types/glob": "^5.0.30",
     "glob": "^7.1.2"
   },
