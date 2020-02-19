@@ -4,7 +4,7 @@
   "description": "Theia - User Storage Extension",
   "dependencies": {
     "@theia/core": "^0.3.7",
-    "@theia/filesystem": "^0.3.7"
+    "@theia/filesystem": "^0.6.0"
   },
   "publishConfig": {
     "access": "public"
