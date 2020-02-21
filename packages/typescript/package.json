@@ -3,8 +3,8 @@
   "version": "0.3.7",
   "description": "Theia - Typescript Extension",
   "dependencies": {
-    "@theia/callhierarchy": "^0.3.7",
-    "@theia/core": "^0.3.7",
+    "@theia/callhierarchy": "^0.6.0",
+    "@theia/core": "^0.6.0",
     "@theia/languages": "^0.3.7",
     "@theia/monaco": "^0.3.7",
     "monaco-typescript": "^2.3.0",
